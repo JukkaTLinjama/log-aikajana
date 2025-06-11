@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Logaritminen Aikajana</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em 2em 2em 6em;
+            background-color: #f5f5f5;
+        }
+
+        .timeline {
+            position: relative;
+            width: 6em;
+            height: 90vh;
+            border-left: 2px solid #333;
+            margin-top: 2em;
+        }
+
+        .tick {
+            position: absolute;
+            width: 1em;
+            height: 2px;
+            background: #333;
+            left: -1em;
+        }
+
+        .label {
+            position: absolute;
+            left: -4em;
+            font-size: 0.8em;
+            text-align: right;
+            width: 2em;
+            transform: translateY(-50%);
+        }
+
+        .event {
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.75em;
+            white-space: nowrap;
+            position: absolute;
+            left: 0;
+            top: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1;
+            opacity: 0.4;
+            transform: translate(0px, 0px);
+        }
+
+        .event.active {
+            z-index: 10;
+            opacity: 1;
+            transform: translate(0px, 0px);
+        }
+
+        .group {
+            position: absolute;
+            left: 2em;
+            cursor: pointer;
+        }
+
+        .container {
+            display: flex;
+            gap: 6em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Logaritminen Aikajana</h1>
+
+    <div class="container">
+        <div>
+            <h2>Alkuräjähdyksestä nykyhetkeen</h2>
+            <div class="timeline" id="timeline-left"></div>
+        </div>
+
+        <div>
+            <h2>Nykyhetkestä menneisyyteen</h2>
+            <div class="timeline" id="timeline-right"></div>
+        </div>
+    </div>
+
+    <script>
+        const minLog = -6;
+        const maxLog = 18;
+        const logRange = maxLog - minLog;
+
+        // DEMODATA – voit korvata tiedostostasi
+        const alusta = [
+            { "Tapahtuma": "Planck-aika", "log10(Δt)": { "arvo": -43.27 } },
+            { "Tapahtuma": "Inflaatio", "log10(Δt)": { "arvo": -36.00 } },
+            { "Tapahtuma": "Hadronit", "log10(Δt)": { "arvo": -6.00 } },
+            { "Tapahtuma": "Ytimet", "log10(Δt)": { "arvo": 0.00 } },
+            { "Tapahtuma": "Valo irtoaa", "log10(Δt)": { "arvo": 5.00 } },
+            { "Tapahtuma": "Galaksien synty", "log10(Δt)": { "arvo": 17.63 } },
+            { "Tapahtuma": "Alkuräjähdys", "log10(Δt)": { "arvo": 17.64 } }
+        ];
+
+        const nykyhetkestä = [
+            { "Tapahtuma": "1s sitten", "log10(Δt)": { "arvo": 0.00 } },
+            { "Tapahtuma": "1 päivä", "log10(Δt)": { "arvo": 4.94 } },
+            { "Tapahtuma": "Internet", "log10(Δt)": { "arvo": 9.00 } },
+            { "Tapahtuma": "Toinen maailmansota", "log10(Δt)": { "arvo": 9.40 } },
+            { "Tapahtuma": "Teollinen vallankumous", "log10(Δt)": { "arvo": 9.90 } },
+            { "Tapahtuma": "Homo sapiens", "log10(Δt)": { "arvo": 12.50 } },
+            { "Tapahtuma": "Maa", "log10(Δt)": { "arvo": 17.15 } },
+            { "Tapahtuma": "Elämä syntyy", "log10(Δt)": { "arvo": 17.08 } },
+            { "Tapahtuma": "Alkuräjähdys", "log10(Δt)": { "arvo": 17.64 } }
+        ];
+
+        function renderTimeline(containerId, events, mergeTolerance) {
+            const timeline = document.getElementById(containerId);
+            const groups = [];
+
+            // Ryhmittele tapahtumat log-arvon mukaan (mergeTolerance)
+            for (const e of events) {
+                const log = e["log10(Δt)"]?.arvo;
+                if (log === undefined || log < minLog || log > maxLog) continue;
+
+                let group = groups.find(g => Math.abs(g.log - log) <= mergeTolerance);
+                if (!group) {
+                    group = { log, events: [] };
+                    groups.push(group);
+                }
+                group.events.push(e);
+            }
+
+            // Piirrä asteikkoviivat
+            for (let i = minLog; i <= maxLog; i++) {
+                const y = ((i - minLog) / logRange) * 100;
+                const tick = document.createElement("div");
+                tick.className = "tick";
+                tick.style.top = y + "%";
+
+                const label = document.createElement("div");
+                label.className = "label";
+                label.style.top = y + "%";
+                label.innerText = `${i}`;
+
+                timeline.appendChild(tick);
+                timeline.appendChild(label);
+            }
+
+            // Piirrä tapahtumaryhmät
+            for (const group of groups) {
+                const y = ((group.log - minLog) / logRange) * 100;
+                const container = document.createElement("div");
+                container.className = "group";
+                container.style.top = `${y}%`;
+                container.dataset.index = "0";
+
+                group.events.forEach((entry, i) => {
+                    const ev = document.createElement("div");
+                    ev.className = "event";
+                    ev.innerText = entry.Tapahtuma;
+
+                    // siirrä taustalle pienillä offseteilla
+                    const offset = (group.events.length - i - 1);
+                    const dx = offset * 2;
+                    const dy = offset * 2;
+                    ev.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                    if (i === 0) ev.classList.add("active");
+                    container.appendChild(ev);
+                });
+
+                container.addEventListener("click", () => {
+                    const items = container.querySelectorAll(".event");
+                    let index = parseInt(container.dataset.index);
+                    items[index].classList.remove("active");
+                    index = (index + 1) % items.length;
+                    items[index].classList.add("active");
+                    container.dataset.index = index;
+                });
+
+                timeline.appendChild(container);
+            }
+        }
+
+        renderTimeline("timeline-left", alusta, .1);
+        renderTimeline("timeline-right", nykyhetkestä, 0.3);
+    </script>
+
+</body>
+
+</html>
