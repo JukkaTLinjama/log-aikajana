@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Kosminen aikajana</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: sans-serif;
+            margin-bottom: 2em;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Kosminen aikajana</h2>
+    <table id="kosminen">
+        <thead>
+            <tr>
+                <th>Tapahtuma</th>
+                <th>Vuotta alkuräjähdyksestä</th>
+                <th>Sekuntia</th>
+                <th>log₁₀(Δt)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Historiallinen aikajana</h2>
+    <table id="historiallinen">
+        <thead>
+            <tr>
+                <th>Tapahtuma</th>
+                <th>Vuotta sitten</th>
+                <th>Sekuntia</th>
+                <th>log₁₀(Δt)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+  const nykyhetkestä = [
+            { "Tapahtuma": "1 sekunti sitten", "Vuodet": { "arvo": 3.17e-8, "teksti": "3.17e-8" }, "Sekunnit": { "arvo": 1, "teksti": "1" }, "log10(Δt)": { "arvo": 0.00, "teksti": "0.00" } },
+            { "Tapahtuma": "1 päivä sitten", "Vuodet": { "arvo": 0.0027, "teksti": "2.70e-3" }, "Sekunnit": { "arvo": 86400, "teksti": "8.64e+4" }, "log10(Δt)": { "arvo": 4.94, "teksti": "4.94" } },
+            { "Tapahtuma": "1 vuosi sitten", "Vuodet": { "arvo": 1, "teksti": "1.00e+0" }, "Sekunnit": { "arvo": 3.15e7, "teksti": "3.15e+7" }, "log10(Δt)": { "arvo": 7.50, "teksti": "7.50" } },
+            { "Tapahtuma": "Vuosi 2000", "Vuodet": { "arvo": 24, "teksti": "2.40e+1" }, "Sekunnit": { "arvo": 7.6e8, "teksti": "7.60e+8" }, "log10(Δt)": { "arvo": 8.88, "teksti": "8.88" } },
+            { "Tapahtuma": "Internet syntyy", "Vuodet": { "arvo": 32, "teksti": "3.20e+1" }, "Sekunnit": { "arvo": 1e9, "teksti": "1.00e+9" }, "log10(Δt)": { "arvo": 9.00, "teksti": "9.00" } },
+            { "Tapahtuma": "Tietokoneet ja informaatioaika alkaa", "Vuodet": { "arvo": 75, "teksti": "7.50e+1" }, "Sekunnit": { "arvo": 2.37e9, "teksti": "2.37e+9" }, "log10(Δt)": { "arvo": 9.37, "teksti": "9.37" } },
+            { "Tapahtuma": "Toinen maailmansota", "Vuodet": { "arvo": 80, "teksti": "8.00e+1" }, "Sekunnit": { "arvo": 2.5e9, "teksti": "2.50e+9" }, "log10(Δt)": { "arvo": 9.40, "teksti": "9.40" } },
+            { "Tapahtuma": "Ensimmäinen maailmansota", "Vuodet": { "arvo": 110, "teksti": "1.10e+2" }, "Sekunnit": { "arvo": 3.5e9, "teksti": "3.50e+9" }, "log10(Δt)": { "arvo": 9.54, "teksti": "9.54" } },
+            { "Tapahtuma": "Teollinen vallankumous", "Vuodet": { "arvo": 250, "teksti": "2.50e+2" }, "Sekunnit": { "arvo": 7.9e9, "teksti": "7.90e+9" }, "log10(Δt)": { "arvo": 9.90, "teksti": "9.90" } },
+            { "Tapahtuma": "Kolumbus löytää Amerikan", "Vuodet": { "arvo": 530, "teksti": "5.30e+2" }, "Sekunnit": { "arvo": 1.7e10, "teksti": "1.70e+10" }, "log10(Δt)": { "arvo": 10.23, "teksti": "10.23" } },
+            { "Tapahtuma": "Gutenbergin kirjapaino", "Vuodet": { "arvo": 580, "teksti": "5.80e+2" }, "Sekunnit": { "arvo": 1.8e10, "teksti": "1.80e+10" }, "log10(Δt)": { "arvo": 10.26, "teksti": "10.26" } },
+            { "Tapahtuma": "Varhaiskeskiaika ja viikingit", "Vuodet": { "arvo": 1000, "teksti": "1.00e+3" }, "Sekunnit": { "arvo": 3.15e10, "teksti": "3.15e+10" }, "log10(Δt)": { "arvo": 10.50, "teksti": "10.50" } },
+            { "Tapahtuma": "Rooman valtakunnan huippu", "Vuodet": { "arvo": 2000, "teksti": "2.00e+3" }, "Sekunnit": { "arvo": 6.3e10, "teksti": "6.30e+10" }, "log10(Δt)": { "arvo": 10.80, "teksti": "10.80" } },
+            { "Tapahtuma": "Antiikin Kreikka ja filosofia", "Vuodet": { "arvo": 2500, "teksti": "2.50e+3" }, "Sekunnit": { "arvo": 7.9e10, "teksti": "7.90e+10" }, "log10(Δt)": { "arvo": 10.90, "teksti": "10.90" } },
+            { "Tapahtuma": "Egyptin pyramidit", "Vuodet": { "arvo": 4500, "teksti": "4.50e+3" }, "Sekunnit": { "arvo": 1.42e11, "teksti": "1.42e+11" }, "log10(Δt)": { "arvo": 11.15, "teksti": "11.15" } },
+            { "Tapahtuma": "Kirjoitettu historia", "Vuodet": { "arvo": 3200, "teksti": "3.20e+3" }, "Sekunnit": { "arvo": 1e11, "teksti": "1.00e+11" }, "log10(Δt)": { "arvo": 11.00, "teksti": "11.00" } },
+            { "Tapahtuma": "Ensimmäiset kaupungit", "Vuodet": { "arvo": 6300, "teksti": "6.30e+3" }, "Sekunnit": { "arvo": 2e11, "teksti": "2.00e+11" }, "log10(Δt)": { "arvo": 11.30, "teksti": "11.30" } },
+            { "Tapahtuma": "Neoliittinen vallankumous (maanviljely)", "Vuodet": { "arvo": 9500, "teksti": "9.50e+3" }, "Sekunnit": { "arvo": 3e11, "teksti": "3.00e+11" }, "log10(Δt)": { "arvo": 11.48, "teksti": "11.48" } },
+            { "Tapahtuma": "Homo sapiens laajenee", "Vuodet": { "arvo": 100000, "teksti": "1.00e+5" }, "Sekunnit": { "arvo": 3.15e12, "teksti": "3.15e+12" }, "log10(Δt)": { "arvo": 12.50, "teksti": "12.50" } },
+            { "Tapahtuma": "Homo sapiens ilmestyy", "Vuodet": { "arvo": 300000, "teksti": "3.00e+5" }, "Sekunnit": { "arvo": 9.5e12, "teksti": "9.50e+12" }, "log10(Δt)": { "arvo": 12.98, "teksti": "12.98" } },
+ 
+      { "Tapahtuma": "Homo sapiens ilmestyy", "Vuodet": { "arvo": 3.00e5, "teksti": "3.00e+5" }, "Sekunnit": { "arvo": 9.50e12, "teksti": "9.50e+12" }, "log10(Δt)": { "arvo": 12.98, "teksti": "12.98" } },
+      { "Tapahtuma": "Ensimmäiset symboliset merkit ja taide", "Vuodet": { "arvo": 1.00e5, "teksti": "1.00e+5" }, "Sekunnit": { "arvo": 3.15e12, "teksti": "3.15e+12" }, "log10(Δt)": { "arvo": 12.50, "teksti": "12.50" } },
+      { "Tapahtuma": "Homo erectus käyttää tulta", "Vuodet": { "arvo": 1.50e6, "teksti": "1.50e+6" }, "Sekunnit": { "arvo": 4.73e13, "teksti": "4.73e+13" }, "log10(Δt)": { "arvo": 13.67, "teksti": "13.67" } },
+      { "Tapahtuma": "Varhaiset kivityökalut (Oldowan)", "Vuodet": { "arvo": 2.60e6, "teksti": "2.60e+6" }, "Sekunnit": { "arvo": 8.20e13, "teksti": "8.20e+13" }, "log10(Δt)": { "arvo": 13.91, "teksti": "13.91" } },
+      { "Tapahtuma": "Australopithecus kehittyy", "Vuodet": { "arvo": 4.00e6, "teksti": "4.00e+6" }, "Sekunnit": { "arvo": 1.26e14, "teksti": "1.26e+14" }, "log10(Δt)": { "arvo": 14.10, "teksti": "14.10" } },
+      { "Tapahtuma": "Hominidien ja simpanssien sukulinjat eroavat", "Vuodet": { "arvo": 6.00e6, "teksti": "6.00e+6" }, "Sekunnit": { "arvo": 1.89e14, "teksti": "1.89e+14" }, "log10(Δt)": { "arvo": 14.28, "teksti": "14.28" } },
+      { "Tapahtuma": "Varhaisimmat ihmisapinat", "Vuodet": { "arvo": 2.00e7, "teksti": "2.00e+7" }, "Sekunnit": { "arvo": 6.30e14, "teksti": "6.30e+14" }, "log10(Δt)": { "arvo": 14.80, "teksti": "14.80" } },
+      { "Tapahtuma": "Kädelliset kehittyvät", "Vuodet": { "arvo": 5.50e7, "teksti": "5.50e+7" }, "Sekunnit": { "arvo": 1.73e15, "teksti": "1.73e+15" }, "log10(Δt)": { "arvo": 15.24, "teksti": "15.24" } },
+      { "Tapahtuma": "Dinosaurukset kuolevat sukupuuttoon", "Vuodet": { "arvo": 6.60e7, "teksti": "6.60e+7" }, "Sekunnit": { "arvo": 2.08e15, "teksti": "2.08e+15" }, "log10(Δt)": { "arvo": 15.32, "teksti": "15.32" } },
+      { "Tapahtuma": "Nisäkkäiden nousu alkaa", "Vuodet": { "arvo": 6.50e7, "teksti": "6.50e+7" }, "Sekunnit": { "arvo": 2.05e15, "teksti": "2.05e+15" }, "log10(Δt)": { "arvo": 15.31, "teksti": "15.31" } },
+ 
+            { "Tapahtuma": "Kambrikauden räjähdys", "Vuodet": {"arvo": 5.00e8, "teksti": "5.00e+8"}, "Sekunnit": {"arvo": 1.58e16,
+            "teksti": "1.58e+16"}, "log10(Δt)": {"arvo": 16.20, "teksti": "16.20"}},
+            { "Tapahtuma": "Monisoluiset", "Vuodet": {"arvo": 1.00e9, "teksti": "1.00e+9"}, "Sekunnit": {"arvo": 3.15e16, "teksti":
+            "3.15e+16"}, "log10(Δt)": {"arvo": 16.50, "teksti": "16.50"}},
+            { "Tapahtuma": "Eukaryootit", "Vuodet": {"arvo": 2.00e9, "teksti": "2.00e+9"}, "Sekunnit": {"arvo": 6.30e16, "teksti":
+            "6.30e+16"}, "log10(Δt)": {"arvo": 16.80, "teksti": "16.80"}},
+            { "Tapahtuma": "Fotosynteesi", "Vuodet": {"arvo": 2.80e9, "teksti": "2.80e+9"}, "Sekunnit": {"arvo": 8.90e16, "teksti":
+            "8.90e+16"}, "log10(Δt)": {"arvo": 16.95, "teksti": "16.95"}},
+            { "Tapahtuma": "Ensimmäiset prokaryootit", "Vuodet": {"arvo": 3.70e9, "teksti": "3.70e+9"}, "Sekunnit": {"arvo": 1.18e17,
+            "teksti": "1.18e+17"}, "log10(Δt)": {"arvo": 17.07, "teksti": "17.07"}},
+            { "Tapahtuma": "Elämän synty", "Vuodet": {"arvo": 3.80e9, "teksti": "3.80e+9"}, "Sekunnit": {"arvo": 1.21e17, "teksti":
+            "1.21e+17"}, "log10(Δt)": {"arvo": 17.08, "teksti": "17.08"}},
+            { "Tapahtuma": "Maa muodostuu", "Vuodet": {"arvo": 4.54e9, "teksti": "4.54e+9"}, "Sekunnit": {"arvo": 1.44e17, "teksti":
+            "1.44e+17"}, "log10(Δt)": {"arvo": 17.15, "teksti": "17.15"}},
+            { "Tapahtuma": "Aurinkokunta syntyy", "Vuodet": {"arvo": 4.60e9, "teksti": "4.60e+9"}, "Sekunnit": {"arvo": 1.46e17,
+            "teksti": "1.46e+17"}, "log10(Δt)": {"arvo": 17.16, "teksti": "17.16"}},
+            { "Tapahtuma": "Galaksien synty", "Vuodet": {"arvo": 1.36e10, "teksti": "1.36e+10"}, "Sekunnit": {"arvo": 4.29e17,
+            "teksti": "4.29e+17"}, "log10(Δt)": {"arvo": 17.63, "teksti": "17.63"}},
+            { "Tapahtuma": "Alkuräjähdys", "Vuodet": {"arvo": 1.38e10, "teksti": "1.38e+10"}, "Sekunnit": {"arvo": 4.36e17, "teksti":
+            "4.36e+17"}, "log10(Δt)": {"arvo": 17.64, "teksti": "17.64"}}
+        ];
+
+
+        const alusta = [
+            { "Tapahtuma": "Planck-aika", "Vuodet": { "arvo": 1.71e-51, "teksti": "1.71e-51" }, "Sekunnit": { "arvo": 5.4e-44, "teksti": "5.40e-44" }, "log10(Δt)": { "arvo": -43.27, "teksti": "-43.27" } },
+            { "Tapahtuma": "Inflaatio alkaa", "Vuodet": { "arvo": 3.17e-44, "teksti": "3.17e-44" }, "Sekunnit": { "arvo": 1e-36, "teksti": "1.00e-36" }, "log10(Δt)": { "arvo": -36, "teksti": "-36.00" } },
+            { "Tapahtuma": "Inflaatio päättyy", "Vuodet": { "arvo": 3.17e-40, "teksti": "3.17e-40" }, "Sekunnit": { "arvo": 1e-32, "teksti": "1.00e-32" }, "log10(Δt)": { "arvo": -32, "teksti": "-32.00" } },
+            { "Tapahtuma": "Kvanttikentät hallitsevat", "Vuodet": { "arvo": 3.17e-38, "teksti": "3.17e-38" }, "Sekunnit": { "arvo": 1e-30, "teksti": "1.00e-30" }, "log10(Δt)": { "arvo": -30, "teksti": "-30.00" } },
+            { "Tapahtuma": "Kvanttikromaattinen vaihe", "Vuodet": { "arvo": 3.17e-20, "teksti": "3.17e-20" }, "Sekunnit": { "arvo": 1e-12, "teksti": "1.00e-12" }, "log10(Δt)": { "arvo": -12, "teksti": "-12.00" } },
+            { "Tapahtuma": "Elektroheikko symmetria hajoaa", "Vuodet": { "arvo": 3.17e-18, "teksti": "3.17e-18" }, "Sekunnit": { "arvo": 1e-10, "teksti": "1.00e-10" }, "log10(Δt)": { "arvo": -10, "teksti": "-10.00" } },
+            { "Tapahtuma": "Kvarkit ja gluonit muodostavat hadroneita", "Vuodet": { "arvo": 3.17e-16, "teksti": "3.17e-16" }, "Sekunnit": { "arvo": 1e-8, "teksti": "1.00e-08" }, "log10(Δt)": { "arvo": -8.00, "teksti": "-8.00" } },
+            { "Tapahtuma": "Hadronien synty (kvarkit → protonit/neutronit)", "Vuodet": { "arvo": 3.17e-14, "teksti": "3.17e-14" }, "Sekunnit": { "arvo": 1e-6, "teksti": "1.00e-06" }, "log10(Δt)": { "arvo": -6.00, "teksti": "-6.00" } },
+            { "Tapahtuma": "Neutriinojen irtautuminen", "Vuodet": { "arvo": 3.17e-12, "teksti": "3.17e-12" }, "Sekunnit": { "arvo": 1e-4, "teksti": "1.00e-04" }, "log10(Δt)": { "arvo": -4.00, "teksti": "-4.00" } },
+            { "Tapahtuma": "Elektronit ja positronit annihiloituvat", "Vuodet": { "arvo": 3.17e-10, "teksti": "3.17e-10" }, "Sekunnit": { "arvo": 1e-2, "teksti": "1.00e-02" }, "log10(Δt)": { "arvo": -2.00, "teksti": "-2.00" } },
+            { "Tapahtuma": "Neutroni-protoni-suhde jäätyy", "Vuodet": { "arvo": 3.17e-8, "teksti": "3.17e-8" }, "Sekunnit": { "arvo": 1, "teksti": "1.00e+0" }, "log10(Δt)": { "arvo": 0.00, "teksti": "0.00" } },
+            { "Tapahtuma": "Ydinfuusio huipussaan (alkuaineet muodostuvat)", "Vuodet": { "arvo": 1.90e-5, "teksti": "1.90e-05" }, "Sekunnit": { "arvo": 180, "teksti": "1.80e+02" }, "log10(Δt)": { "arvo": 2.26, "teksti": "2.26" } },
+
+            { "Tapahtuma": "Kosminen pimeä aika alkaa", "Vuodet": { "arvo": 3.17e-4, "teksti": "3.17e-4" }, "Sekunnit": { "arvo": 1e5, "teksti": "1.00e+05" }, "log10(Δt)": { "arvo": 5.00, "teksti": "5.00" } },
+            { "Tapahtuma": "Tiheyserot alkavat kasvaa", "Vuodet": { "arvo": 0.01, "teksti": "1.00e-2" }, "Sekunnit": { "arvo": 3.15e5, "teksti": "3.15e+05" }, "log10(Δt)": { "arvo": 5.50, "teksti": "5.50" } },
+            { "Tapahtuma": "Pimeän aineen gravitaatiovaikutus voimistuu", "Vuodet": { "arvo": 0.95, "teksti": "9.50e-1" }, "Sekunnit": { "arvo": 3.0e7, "teksti": "3.00e+07" }, "log10(Δt)": { "arvo": 7.48, "teksti": "7.48" } },
+            { "Tapahtuma": "Kosmologinen rakenteenmuodostus alkaa", "Vuodet": { "arvo": 10, "teksti": "1.00e+1" }, "Sekunnit": { "arvo": 3.15e8, "teksti": "3.15e+08" }, "log10(Δt)": { "arvo": 8.50, "teksti": "8.50" } },
+
+            { "Tapahtuma": "Pimeän aineen vaikutus kasvaa", "Vuodet": { "arvo": 1.0e3, "teksti": "1.00e+03" }, "Sekunnit": { "arvo": 3.15e10, "teksti": "3.15e+10" }, "log10(Δt)": { "arvo": 10.50, "teksti": "10.50" } },
+            { "Tapahtuma": "Aineen ja säteilyn tasa-arvo", "Vuodet": { "arvo": 1.0e4, "teksti": "1.00e+04" }, "Sekunnit": { "arvo": 3.15e11, "teksti": "3.15e+11" }, "log10(Δt)": { "arvo": 11.50, "teksti": "11.50" } },
+            { "Tapahtuma": "Rekombinaatio – universumi muuttuu läpinäkyväksi", "Vuodet": { "arvo": 3.8e5, "teksti": "3.80e+05" }, "Sekunnit": { "arvo": 1.20e13, "teksti": "1.20e+13" }, "log10(Δt)": { "arvo": 13.08, "teksti": "13.08" } },
+
+            
+            { "Tapahtuma": "Ensimmäiset tähdet", "Vuodet": { "arvo": 1e8, "teksti": "1.00e+08" }, "Sekunnit": { "arvo": 3.15e15, "teksti": "3.15e+15" }, "log10(Δt)": { "arvo": 15.50, "teksti": "15.50" } },
+            { "Tapahtuma": "Linnunrata muodostuu", "Vuodet": { "arvo": 2e8, "teksti": "2.00e+08" }, "Sekunnit": { "arvo": 6.30e15, "teksti": "6.30e+15" }, "log10(Δt)": { "arvo": 15.80, "teksti": "15.80" } },
+            { "Tapahtuma": "Aurinkokunta syntyy", "Vuodet": { "arvo": 9.2e9, "teksti": "9.20e+09" }, "Sekunnit": { "arvo": 2.90e17, "teksti": "2.90e+17" }, "log10(Δt)": { "arvo": 17.46, "teksti": "17.46" } },
+            { "Tapahtuma": "Maa muodostuu", "Vuodet": { "arvo": 9.26e9, "teksti": "9.26e+09" }, "Sekunnit": { "arvo": 2.92e17, "teksti": "2.92e+17" }, "log10(Δt)": { "arvo": 17.47, "teksti": "17.47" } },
+            { "Tapahtuma": "Elämän synty", "Vuodet": { "arvo": 10e9, "teksti": "1.00e+10" }, "Sekunnit": { "arvo": 3.15e17, "teksti": "3.15e+17" }, "log10(Δt)": { "arvo": 17.50, "teksti": "17.50" } },
+            { "Tapahtuma": "Ensimmäiset prokaryootit", "Vuodet": { "arvo": 10.1e9, "teksti": "1.01e+10" }, "Sekunnit": { "arvo": 3.18e17, "teksti": "3.18e+17" }, "log10(Δt)": { "arvo": 17.50, "teksti": "17.50" } },
+            { "Tapahtuma": "Fotosynteesi", "Vuodet": { "arvo": 11e9, "teksti": "1.10e+10" }, "Sekunnit": { "arvo": 3.47e17, "teksti": "3.47e+17" }, "log10(Δt)": { "arvo": 17.54, "teksti": "17.54" } },
+            { "Tapahtuma": "Eukaryootit", "Vuodet": { "arvo": 11.8e9, "teksti": "1.18e+10" }, "Sekunnit": { "arvo": 3.72e17, "teksti": "3.72e+17" }, "log10(Δt)": { "arvo": 17.57, "teksti": "17.57" } },
+            { "Tapahtuma": "Monisoluiset", "Vuodet": { "arvo": 12.8e9, "teksti": "1.28e+10" }, "Sekunnit": { "arvo": 4.04e17, "teksti": "4.04e+17" }, "log10(Δt)": { "arvo": 17.61, "teksti": "17.61" } },
+            { "Tapahtuma": "Kambrikauden räjähdys", "Vuodet": { "arvo": 13.3e9, "teksti": "1.33e+10" }, "Sekunnit": { "arvo": 4.19e17, "teksti": "4.19e+17" }, "log10(Δt)": { "arvo": 17.62, "teksti": "17.62" } },
+            { "Tapahtuma": "Dinosaurukset", "Vuodet": { "arvo": 13.63e9, "teksti": "1.36e+10" }, "Sekunnit": { "arvo": 4.30e17, "teksti": "4.30e+17" }, "log10(Δt)": { "arvo": 17.63, "teksti": "17.63" } },
+            { "Tapahtuma": "Nisäkkäät", "Vuodet": { "arvo": 13.7e9, "teksti": "1.37e+10" }, "Sekunnit": { "arvo": 4.34e17, "teksti": "4.34e+17" }, "log10(Δt)": { "arvo": 17.638, "teksti": "17.638" } },
+            { "Tapahtuma": "Homo sapiens", "Vuodet": { "arvo": 13.7998e9, "teksti": "1.38e+10" }, "Sekunnit": { "arvo": 4.355e17, "teksti": "4.355e+17" }, "log10(Δt)": { "arvo": 17.6399, "teksti": "17.6399" } },
+            { "Tapahtuma": "Nykyhetki", "Vuodet": { "arvo": 13.8e9, "teksti": "1.38e+10" }, "Sekunnit": { "arvo": 4.36e17, "teksti": "4.36e+17" }, "log10(Δt)": { "arvo": 17.64, "teksti": "17.64" } }
+        ];
+
+        const tbody1 = document.querySelector("#kosminen tbody");
+        alusta.forEach(entry => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+    <td>${entry.Tapahtuma}</td>
+    <td>${entry.Vuodet.teksti}</td>
+    <td>${entry.Sekunnit.teksti}</td>
+    <td>${entry["log10(Δt)"].teksti}</td>
+  `;
+            tbody1.appendChild(row);
+        });
+
+        const tbody2 = document.querySelector("#historiallinen tbody");
+        nykyhetkestä.forEach(entry => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+    <td>${entry.Tapahtuma}</td>
+    <td>${entry.Vuodet.teksti}</td>
+    <td>${entry.Sekunnit.teksti}</td>
+    <td>${entry["log10(Δt)"].teksti}</td>
+  `;
+            tbody2.appendChild(row);
+        });
+    </script>
+
+</body>
+
+</html>
