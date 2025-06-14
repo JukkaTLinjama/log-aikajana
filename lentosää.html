@@ -24,6 +24,10 @@
         th {
             background-color: #eee;
         }
+
+        #rasp-image {
+            margin-top: 24px;
+        }
     </style>
 </head>
 
@@ -43,7 +47,6 @@
                 const data = await fetchForecast(forecastPlace);
                 const filtered = filterTimeRange(data);
 
-                // Luodaan listaus kentistä, jotka halutaan yrittää näyttää
                 const possibleFields = [
                     ['temp', '°C', 'Lämpötila'],
                     ['wind', 'm/s', 'Tuulen nopeus'],
@@ -52,13 +55,16 @@
                     ['updraft', 'm/s', 'Termiikin nostonopeus']
                 ];
 
-                // Vain ne jotka ovat oikeasti datassa:
                 const html = possibleFields
-                    .filter(([key]) => data[key]) // jos kenttä olemassa
+                    .filter(([key]) => data[key])
                     .map(([key, unit, title]) => generateTable(filtered, key, unit, title))
                     .join("<br>");
 
                 output.innerHTML = html;
+
+                // Lisää RASP-kuva
+                addRaspImage(output);
+
             } catch (err) {
                 output.innerHTML = `<p style="color:red;">Virhe: ${err.message}</p>`;
                 console.error("Virhe:", err);
@@ -85,7 +91,6 @@
         }
 
         async function fetchForecast({ name, lat, lon }) {
-            // Vain turvalliset kentät kyselyyn
             const hourlyParams = [
                 'temperature_2m',
                 'wind_speed_10m',
@@ -97,18 +102,37 @@
             if (!res.ok) throw new Error(`API-virhe: ${res.status}`);
             const data = await res.json();
 
-            console.log("Raakadata:", data);
-
             return {
                 name,
                 time: data.hourly.time,
                 temp: data.hourly.temperature_2m,
                 wind: data.hourly.wind_speed_10m,
                 dir: data.hourly.wind_direction_10m,
-                // Lisätään nämä vain jos saatavilla
                 thermal: data.hourly.thermal_height || null,
                 updraft: data.hourly.updraft_velocity || null
             };
+        }
+
+        function addRaspImage(container) {
+            const img = document.createElement("img");
+            img.src = getRaspImageUrl();
+            img.alt = "RASP termiikkikorkeus (BL Top)";
+            img.width = 600;
+            img.id = "rasp-image";
+
+            const label = document.createElement("h2");
+            label.innerText = "RASP: Termiikkikorkeus (klo 14 UTC)";
+
+            container.appendChild(label);
+            container.appendChild(img);
+        }
+
+        function getRaspImageUrl(date = new Date(), hour = 14) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(hour).padStart(2, '0');
+            return `https://rasp.linta.de/images/europe-central/bltop-${y}${m}${d}-${h}.png`;
         }
     </script>
 </body>
