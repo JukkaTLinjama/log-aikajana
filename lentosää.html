@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Räyskälän sää – debug</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        th {
+            background-color: #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Debug: Räyskälän sääennuste</h1>
+    <button onclick="getForecast()">Hae ennuste</button>
+    <div id="output"></div>
+
+    <script>
+        const forecastPlace = { name: "Räyskälä", lat: 60.773, lon: 23.512 };
+
+        async function getForecast() {
+            const output = document.getElementById("output");
+            output.innerHTML = "Haetaan tietoja...";
+
+            try {
+                const data = await fetchForecast(forecastPlace);
+                const filtered = filterTimeRange(data);
+
+                // Luodaan listaus kentistä, jotka halutaan yrittää näyttää
+                const possibleFields = [
+                    ['temp', '°C', 'Lämpötila'],
+                    ['wind', 'm/s', 'Tuulen nopeus'],
+                    ['dir', '°', 'Tuulen suunta'],
+                    ['thermal', 'm', 'Termiikkikorkeus'],
+                    ['updraft', 'm/s', 'Termiikin nostonopeus']
+                ];
+
+                // Vain ne jotka ovat oikeasti datassa:
+                const html = possibleFields
+                    .filter(([key]) => data[key]) // jos kenttä olemassa
+                    .map(([key, unit, title]) => generateTable(filtered, key, unit, title))
+                    .join("<br>");
+
+                output.innerHTML = html;
+            } catch (err) {
+                output.innerHTML = `<p style="color:red;">Virhe: ${err.message}</p>`;
+                console.error("Virhe:", err);
+            }
+        }
+
+        function filterTimeRange(data) {
+            const indices = data.time.map((t, i) => {
+                const h = parseInt(t.slice(11, 13));
+                return h >= 10 && h <= 18 ? i : -1;
+            }).filter(i => i !== -1);
+            return { indices, allData: [data] };
+        }
+
+        function generateTable({ indices, allData }, field, unit, title) {
+            let html = `<h2>${title}</h2><table><tr><th>Aika</th><th>${allData[0].name}</th></tr>`;
+            for (const i of indices) {
+                const t = allData[0].time[i].slice(11, 16);
+                const val = (allData[0][field] && allData[0][field][i] != null) ? allData[0][field][i] : "n/a";
+                html += `<tr><td>${t}</td><td>${val}</td></tr>`;
+            }
+            html += `</table>`;
+            return html;
+        }
+
+        async function fetchForecast({ name, lat, lon }) {
+            // Vain turvalliset kentät kyselyyn
+            const hourlyParams = [
+                'temperature_2m',
+                'wind_speed_10m',
+                'wind_direction_10m'
+            ].join(',');
+
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=${hourlyParams}&forecast_days=1&timezone=Europe/Helsinki`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`API-virhe: ${res.status}`);
+            const data = await res.json();
+
+            console.log("Raakadata:", data);
+
+            return {
+                name,
+                time: data.hourly.time,
+                temp: data.hourly.temperature_2m,
+                wind: data.hourly.wind_speed_10m,
+                dir: data.hourly.wind_direction_10m,
+                // Lisätään nämä vain jos saatavilla
+                thermal: data.hourly.thermal_height || null,
+                updraft: data.hourly.updraft_velocity || null
+            };
+        }
+    </script>
+</body>
+
+</html>
