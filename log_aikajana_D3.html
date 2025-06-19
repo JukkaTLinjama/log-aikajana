@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>D3 Logaritminen Aikajana</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+            background-color: #f5f5f5;
+        }
+
+        svg {
+            background: white;
+            border-left: none;
+            overflow: visible;
+        }
+
+        .event-label {
+            font-size: 12px;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        .tick text {
+            font-size: 10px;
+        }
+
+        .decade-label {
+            font-weight: bold;
+            font-size: 12px;
+            fill: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Logaritminen aikajana (D3)</h1>
+    <svg id="timeline" width="500" height="800"></svg>
+
+    <script>
+        const data = [
+            { label: "Elämän synty (3.8 mrd v)", log: 17.08 },
+            { label: "1 vuosi sitten", log: 7.5 },
+            { label: "Alkuräjähdys (13.8 mrd v)", log: 17.64 },
+            { label: "Galaksien synty (13.6 mrd v)", log: 17.63 },
+            { label: "Tähdet syttyvät (13.4 mrd v)", log: 17.61 },
+            { label: "Aurinkokunta syntyy (4.6 mrd v)", log: 17.16 },
+            { label: "Internet", log: 9.0 },
+            { label: "Tietokoneet", log: 9.5 },
+            { label: "Toinen maailmansota", log: 9.7 },
+            { label: "Ensimmäinen maailmansota", log: 9.85 },
+            { label: "Teollinen vallankumous", log: 10.0 },
+            { label: "Ranskan vallankumous", log: 10.15 },
+            { label: "Kolumbus löytää Amerikan", log: 10.3 },
+            { label: "Gutenbergin kirjapaino", log: 10.4 },
+            { label: "Pyramidit", log: 11.15 },
+            { label: "Rooma", log: 10.8 },
+            { label: "Antiikin Kreikka", log: 10.9 },
+            { label: "Homo sapiens", log: 12.98 },
+            { label: "Neoliittinen vallankumous", log: 11.4 },
+            { label: "Ensimmäiset kaupungit", log: 11.3 }
+        ];
+
+        const svg = d3.select("#timeline");
+        const width = +svg.attr("width");
+        const height = +svg.attr("height");
+        svg.attr("preserveAspectRatio", "xMinYMin meet").attr("viewBox", `0 0 ${width} ${height}`);
+
+        const margin = { top: 60, right: 100, bottom: 20, left: 120 };
+        const innerHeight = height - margin.top - margin.bottom;
+
+        let y = d3.scaleLog()
+            .domain([1e0, 1e18])  // Alkuräjähdys alhaalla
+            .range([innerHeight, 0]);
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        const axisG = g.append("g");
+        const decadeG = g.append("g").attr("class", "decades");
+        const eventGroup = g.append("g").attr("class", "events");
+
+        function updateAxis(scale) {
+            const yAxis = d3.axisLeft(scale)
+                .ticks(10, ".1e")
+                .tickSize(-10);
+
+            axisG.call(yAxis);
+
+            // Update decade labels
+            const decades = d3.range(0, 19); // log10 values
+            const format = d3.format(".0f");
+            decadeG.selectAll("text")
+                .data(decades)
+                .join("text")
+                .attr("class", "decade-label")
+                .attr("x", -100)
+                .attr("y", d => scale(Math.pow(10, d)))
+                .attr("dy", "0.35em")
+                .text(d => `${format(d)}`);
+        }
+
+        function updateEvents(scale) {
+            eventGroup.selectAll("text")
+                .data(data)
+                .join("text")
+                .attr("class", "event-label")
+                .attr("x", 20)
+                .attr("y", d => scale(Math.pow(10, d.log)))
+                .attr("dy", "0.3em")
+                .text(d => `${d.label}`);
+        }
+
+        updateAxis(y);
+        updateEvents(y);
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 20])
+            .translateExtent([[0, 0], [width, height]])
+            .on("zoom", zoomed);
+
+        svg.call(zoom);
+
+        function zoomed({ transform }) {
+            const newY = transform.rescaleY(y);
+            updateAxis(newY);
+            updateEvents(newY);
+        }
+    </script>
+</body>
+
+</html>
