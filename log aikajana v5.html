@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>D3 Logaritminen Aikajana v5</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            margin: 0.5em 2em;
+            font-size: 1.2em;
+        }
+
+        #filters {
+            margin: 0 2em 0.5em 2em;
+        }
+
+        #timeline-container {
+            position: absolute;
+            top: 4em;
+            left: 2em;
+            right: 2em;
+            bottom: 1em;
+            background: white;
+            overflow: hidden;
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .event-label {
+            font-size: 12px;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        .tick text {
+            font-size: 10px;
+        }
+
+        .decade-label {
+            font-weight: bold;
+            font-size: 12px;
+            fill: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Historia logaritmisena aikajanana v5</h1>
+
+    <div id="filters">
+        <label><input type="checkbox" value="kosmos" checked> Kosmos</label>
+        <label><input type="checkbox" value="elämä" checked> Elämä</label>
+        <label><input type="checkbox" value="ihmiskunta" checked> Ihmiskunta</label>
+        <label><input type="checkbox" value="kulttuuri" checked> Kulttuuri</label>
+        <label><input type="checkbox" value="teknologia" checked> Teknologia</label>
+    </div>
+
+    <div id="timeline-container">
+        <svg id="timeline" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+
+    <script>
+        const categoryColors = {
+            kosmos: "#a0c4ff",
+            elämä: "#b9fbc0",
+            ihmiskunta: "#ffc6ff",
+            kulttuuri: "#ffd6a5",
+            teknologia: "#fdffb6"
+        };
+
+        const data = [
+            { label: "Alkuräjähdys", year: "13.8 mrd v", log: 17.64, main: true, category: "kosmos" },
+            { label: "Tähdet syttyvät", year: "13.4 mrd v", log: 17.61, category: "kosmos" },
+            { label: "Galaksien synty", year: "13.6 mrd v", log: 17.63, category: "kosmos" },
+            { label: "Aurinkokunta syntyy", year: "4.6 mrd v", log: 17.16, category: "kosmos" },
+            { label: "Elämän synty", year: "3.8 mrd v", log: 17.08, main: true, category: "elämä" },
+            { label: "Fotosynteesi", year: "3.5 mrd v", log: 17.05, category: "elämä" },
+            { label: "Eukaryootit", year: "2 mrd v", log: 16.80, category: "elämä" },
+            { label: "Monisoluiset", year: "1.2 mrd v", log: 16.38, main: true, category: "elämä" },
+            { label: "Dinosaurukset kuolevat", year: "66 milj. v", log: 15.82, main: true, category: "elämä" },
+            { label: "Hominidit ja simpanssit eroavat", year: "6 milj. v", log: 13.78, main: true, category: "ihmiskunta" },
+            { label: "Australopithecus kehittyy", year: "4 milj. v", log: 13.6, main: true, category: "ihmiskunta" },
+            { label: "Homo erectus käyttää tulta", year: "2 milj. v", log: 13.3, main: true, category: "ihmiskunta" },
+            { label: "Homo sapiens", year: "300 000 v", log: 12.98, main: true, category: "ihmiskunta" },
+            { label: "Neoliittinen vallankumous", year: "9500 v", log: 11.4, category: "kulttuuri" },
+            { label: "Ensimmäiset kaupungit", year: "6300 v", log: 11.3, category: "kulttuuri" },
+            { label: "Kirjoitettu historia", year: "5200 v", log: 11.72, main: true, category: "kulttuuri" },
+            { label: "Pyramidit", year: "4500 v", log: 11.15, category: "kulttuuri" },
+            { label: "Antiikin Kreikka", year: "2500 v", log: 10.9, main: true, category: "kulttuuri" },
+            { label: "Rooma", year: "2000 v", log: 10.8, category: "kulttuuri" },
+            { label: "Moderni tiede", year: "400 v", log: 10.6, main: true, category: "teknologia" },
+            { label: "Gutenbergin kirjapaino", year: "580 v", log: 10.4, category: "teknologia" },
+            { label: "Kolumbus löytää Amerikan", year: "530 v", log: 10.3, category: "kulttuuri" },
+            { label: "Ranskan vallankumous", year: "230 v", log: 10.15, category: "kulttuuri" },
+            { label: "Teollinen vallankumous", year: "250 v", log: 10.0, category: "teknologia" },
+            { label: "Ensimmäinen maailmansota", year: "110 v", log: 9.85, category: "kulttuuri" },
+            { label: "Toinen maailmansota", year: "80 v", log: 9.7, category: "kulttuuri" },
+            { label: "Tietokoneet", year: "75 v", log: 9.5, category: "teknologia" },
+            { label: "Internet", year: "32 v", log: 9.0, main: true, category: "teknologia" },
+            { label: "1 vuosi sitten", year: "1 v", log: 7.5, category: "ihmiskunta" }
+        ];
+
+        const margin = { top: 20, right: 100, bottom: 20, left: 90 };
+        const timelineWidth = 500;
+        const svg = d3.select("#timeline");
+        const containerHeight = document.getElementById('timeline-container').clientHeight;
+        const contentHeight = containerHeight - margin.top - margin.bottom;
+
+        const y = d3.scaleLog().domain([1e0, 1e18]).range([contentHeight, 0]);
+        let currentY = y;
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+        const axisG = g.append("g");
+        const decadeG = g.append("g").attr("class", "decades");
+        const hairlineGroup = g.append("g").attr("class", "hairlines");
+        const eventGroup = g.append("g").attr("class", "events");
+
+        // Zoom-indikaattorin ryhmä vasempaan reunaan
+        const indicatorGroup = svg.append("g").attr("transform", `translate(20, ${margin.top})`);
+
+        // Staattinen jana, koko skaala
+        indicatorGroup.append("rect")
+            .attr("x", 0)
+            .attr("width", 5)
+            .attr("y", 0)
+            .attr("height", contentHeight)
+            .attr("fill", "#eee");
+
+        // Indikaattori, joka päivittyy zoomin mukaan
+        const zoomRect = indicatorGroup.append("rect")
+            .attr("x", 0)
+            .attr("width", 5)
+            .attr("fill", "#888")
+            .attr("opacity", 0);
+
+        function updateAxis(scale) {
+            const yAxis = d3.axisLeft(scale).ticks(10, ".1e").tickSize(-10);
+            axisG.call(yAxis);
+
+            const decades = d3.range(0, 19);
+            const format = d3.format(".0f");
+            decadeG.selectAll("text")
+                .data(decades)
+                .join("text")
+                .attr("class", "decade-label")
+                .attr("x", -70)
+                .attr("y", d => scale(Math.pow(10, d)))
+                .attr("dy", "0.35em")
+                .text(d => `${format(d)}`);
+        }
+
+        function updateEvents(scale) {
+            const selectedCategories = new Set(
+                Array.from(document.querySelectorAll('#filters input:checked')).map(input => input.value)
+            );
+
+            const visibleData = data.filter(d => selectedCategories.has(d.category));
+
+            hairlineGroup.selectAll("line")
+                .data(visibleData, d => d.label)
+                .join("line")
+                .attr("x1", 5)
+                .attr("x2", d => d.main ? 15 : 140)
+                .attr("y1", d => scale(Math.pow(10, d.log)))
+                .attr("y2", d => scale(Math.pow(10, d.log)))
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 1);
+
+            const events = eventGroup.selectAll("g")
+                .data(visibleData, d => d.label)
+                .join("g")
+                .attr("transform", d => `translate(0, ${scale(Math.pow(10, d.log))})`);
+
+            events.selectAll("rect")
+                .data(d => [d])
+                .join("rect")
+                .attr("x", d => d.main ? 15 : 140)
+                .attr("y", -10)
+                .attr("width", 300)
+                .attr("height", 18)
+                .attr("fill", d => categoryColors[d.category] || "#e0e0e0");
+
+            events.selectAll("text")
+                .data(d => [d])
+                .join("text")
+                .attr("class", "event-label")
+                .attr("x", d => d.main ? 20 : 145)
+                .attr("y", 0)
+                .text(d => `${d.label} (${d.year})`);
+        }
+
+        function updateIndicator(transform) {
+                const visibleDomain = currentY.domain(); // näkyvä alue sekunteina
+                // Huom: d3.scaleLog().domain on [min,max], mutta zoom muuttaa domainia!
+                // Käännä domain ylä ja ala - koska skaala menee y-akselilla alhaalta (iso) ylös (pieni)
+                const domainStart = Math.pow(10, visibleDomain[1]); // isoin aika (yläpäähän)
+                const domainEnd = Math.pow(10, visibleDomain[0]);   // pienin aika (alapäähän)
+                const yStart = y(domainStart); // ylärajan pikselikoordinaatti
+                const yEnd = y(domainEnd);     // alarajan pikselikoordinaatti
+
+                const indicatorY = yEnd;                       // indikaattorin yläreuna
+                const indicatorHeight = yStart - yEnd;         // korkeus (yStart > yEnd logaritmisella asteikolla)
+
+                zoomRect
+                    .attr("y", indicatorY)
+                    .attr("height", indicatorHeight > 0 ? indicatorHeight : 0);
+
+                zoomRect.attr("opacity", (transform.k !== 1) ? 0.6 : 0);
+            }
+
+
+        updateAxis(y);
+        updateEvents(y);
+
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.5, 20])
+            .translateExtent([[0, 0], [timelineWidth, containerHeight]])
+            .on("zoom", ({ transform }) => {
+                currentY = transform.rescaleY(y);
+                updateAxis(currentY);
+                updateEvents(currentY);
+                updateIndicator(transform);
+            });
+
+        svg.call(zoomBehavior);
+
+        document.querySelectorAll('#filters input').forEach(input => {
+            input.addEventListener('change', () => updateEvents(currentY));
+        });
+    </script>
+</body>
+
+</html>
