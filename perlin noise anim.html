@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Interactive Simplex Noise</title>
+    <style>
+        body {
+            background: #222;
+            color: #eee;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 1em;
+        }
+
+        #controls {
+            display: flex;
+            gap: 1em;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1em;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.9em;
+        }
+
+        canvas {
+            display: block;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <label>Base Frequency
+            <input type="range" min="0.005" max="0.2" step="0.001" value="0.05" id="freqSlider">
+        </label>
+        <label>Num Octaves
+            <input type="range" min="1" max="6" step="1" value="3" id="octaveSlider">
+        </label>
+        <label>Seed
+            <input type="range" min="1" max="9999" step="1" value="1" id="seedSlider">
+        </label>
+    </div>
+    <canvas width="256" height="256" id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const freqSlider = document.getElementById('freqSlider');
+        const octaveSlider = document.getElementById('octaveSlider');
+        const seedSlider = document.getElementById('seedSlider');
+
+        let simplex;
+
+        // Re-seedable random for consistent permutations
+        function mulberry32(a) {
+            return function () {
+                var t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        class SimplexNoise {
+            constructor(rand) {
+                this.perm = new Uint8Array(512);
+                const p = new Uint8Array(256);
+                for (let i = 0; i < 256; i++) p[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const r = Math.floor(rand() * (i + 1));
+                    [p[i], p[r]] = [p[r], p[i]];
+                }
+                for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+            }
+
+            noise(xin, yin) {
+                const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+                const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
+                const s = (xin + yin) * F2;
+                const i = Math.floor(xin + s);
+                const j = Math.floor(yin + s);
+                const t = (i + j) * G2;
+                const X0 = i - t, Y0 = j - t;
+                const x0 = xin - X0, y0 = yin - Y0;
+                let i1, j1;
+                if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+                const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+                const x2 = x0 - 1.0 + 2.0 * G2, y2 = y0 - 1.0 + 2.0 * G2;
+
+                const ii = i & 255, jj = j & 255;
+                const gi0 = this.perm[ii + this.perm[jj]] % 12;
+                const gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
+                const gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12;
+
+                const grad3 = [
+                    [1, 1], [-1, 1], [1, -1], [-1, -1],
+                    [1, 0], [-1, 0], [1, 0], [-1, 0],
+                    [0, 1], [0, -1], [0, 1], [0, -1]
+                ];
+
+                let n0 = 0, n1 = 0, n2 = 0;
+
+                let t0 = 0.5 - x0 * x0 - y0 * y0;
+                if (t0 >= 0) {
+                    t0 *= t0;
+                    const g = grad3[gi0];
+                    n0 = t0 * t0 * (g[0] * x0 + g[1] * y0);
+                }
+                let t1 = 0.5 - x1 * x1 - y1 * y1;
+                if (t1 >= 0) {
+                    t1 *= t1;
+                    const g = grad3[gi1];
+                    n1 = t1 * t1 * (g[0] * x1 + g[1] * y1);
+                }
+                let t2 = 0.5 - x2 * x2 - y2 * y2;
+                if (t2 >= 0) {
+                    t2 *= t2;
+                    const g = grad3[gi2];
+                    n2 = t2 * t2 * (g[0] * x2 + g[1] * y2);
+                }
+
+                return 70.0 * (n0 + n1 + n2);
+            }
+        }
+
+        function fractalNoise(x, y, octaves, baseFreq) {
+            let total = 0, amp = 1, freq = 1, max = 0;
+            for (let o = 0; o < octaves; o++) {
+                total += (simplex.noise(x * freq * baseFreq, y * freq * baseFreq) + 1) * 0.5 * amp;
+                max += amp;
+                amp /= 2;
+                freq *= 2;
+            }
+            return total / max;
+        }
+
+        function draw() {
+            const freq = parseFloat(freqSlider.value);
+            const octaves = parseInt(octaveSlider.value, 10);
+            const imgData = ctx.createImageData(256, 256);
+            for (let y = 0; y < 256; y++) {
+                for (let x = 0; x < 256; x++) {
+                    const n = fractalNoise(x, y, octaves, freq);
+                    const v = Math.floor(n * 255);
+                    const idx = (y * 256 + x) * 4;
+                    imgData.data[idx] = v;
+                    imgData.data[idx + 1] = v;
+                    imgData.data[idx + 2] = v;
+                    imgData.data[idx + 3] = 255;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        freqSlider.addEventListener('input', draw);
+        octaveSlider.addEventListener('input', draw);
+        seedSlider.addEventListener('input', () => {
+            simplex = new SimplexNoise(mulberry32(parseInt(seedSlider.value, 10)));
+            draw();
+        });
+
+        simplex = new SimplexNoise(mulberry32(1));
+        draw();
+    </script>
+</body>
+
+</html>
