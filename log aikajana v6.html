@@ -111,6 +111,11 @@
             .attr("dy", "0.35em").attr("font-size", "10px").text(d => d);
         const zoomWindow = indicatorGroup.append("rect").attr("x", 0).attr("width", 5).attr("fill", "#888").attr("opacity", 0);
 
+        // Inertia variables
+        let lastTransform = d3.zoomIdentity;
+        let velocity = 0;
+        let inertiaTimer;
+
         function updateAxis(scale) {
             const yAxis = d3.axisLeft(scale).ticks(10, ".1e").tickSize(-10);
             axisG.call(yAxis);
@@ -157,11 +162,28 @@
         const zoomBehavior = d3.zoom()
             .scaleExtent([0.5, 20])
             .translateExtent([[0, 0], [600, containerHeight]])
-            .on("zoom", ({ transform }) => {
+            .on("zoom", event => {
+                const { transform } = event;
+                if (event.sourceEvent) {
+                    velocity = transform.y - lastTransform.y;
+                    lastTransform = transform;
+                }
                 currentY = transform.rescaleY(y);
                 updateAxis(currentY);
                 updateEvents(currentY);
                 updateIndicator(transform);
+            })
+            .on("end", event => {
+                if (event.sourceEvent && Math.abs(velocity) > 0.5) {
+                    let t = d3.zoomTransform(svg.node());
+                    if (inertiaTimer) inertiaTimer.stop();
+                    inertiaTimer = d3.timer(() => {
+                        t = t.translate(0, velocity);
+                        svg.call(zoomBehavior.transform, t);
+                        velocity *= 0.95;
+                        if (Math.abs(velocity) < 0.1) inertiaTimer.stop();
+                    });
+                }
             });
         svg.call(zoomBehavior);
 
