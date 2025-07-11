@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Logaritminen Aikajana v8</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: auto;
+            font-family: sans-serif;
+            background-color: #f5f5f5;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        h1 {
+            margin: 0.5em 1em;
+            font-size: 1.1em;
+        }
+
+        #filters {
+            margin: 0 1em 0.5em 1em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5em;
+            font-size: 0.9em;
+        }
+
+        #timeline-container {
+            position: absolute;
+            top: 5em;
+            left: 1em;
+            right: 1em;
+            bottom: 1em;
+            background: white;
+            overflow: hidden;
+            height: calc(100% - 6em);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .event-label {
+            font-size: 12px;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        .tick text {
+            font-size: 10px;
+        }
+
+        .decade-label {
+            font-weight: bold;
+            font-size: 12px;
+            fill: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Historia logaritmisena aikajanana v8</h1>
+    <div id="filters">
+        <label><input type="checkbox" value="kosmos" checked> Kosmos</label>
+        <label><input type="checkbox" value="elämä" checked> Elämä</label>
+        <label><input type="checkbox" value="ihmiskunta" checked> Ihmiskunta</label>
+        <label><input type="checkbox" value="kulttuuri" checked> Kulttuuri</label>
+        <label><input type="checkbox" value="teknologia" checked> Teknologia</label>
+    </div>
+    <div id="timeline-container">
+        <svg id="timeline" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+
+    <script>
+        const categoryColors = {
+            kosmos: "#a0c4ff",
+            elämä: "#b9fbc0",
+            ihmiskunta: "#ffc6ff",
+            kulttuuri: "#ffd6a5",
+            teknologia: "#fdffb6"
+        };
+
+        const data = [
+            { label: "Alkuräjähdys", year: "13.8 mrd v", log: 17.64, main: true, category: "kosmos" },
+            { label: "Tähdet syttyvät", year: "13.4 mrd v", log: 17.61, category: "kosmos" },
+            { label: "Aurinkokunta syntyy", year: "4.6 mrd v", log: 17.16, category: "kosmos" },
+            { label: "Elämän synty", year: "3.8 mrd v", log: 17.08, main: true, category: "elämä" },
+            { label: "Dinosaurukset kuolevat", year: "66 milj. v", log: 15.82, main: true, category: "elämä" },
+            { label: "Homo sapiens", year: "300 000 v", log: 12.98, main: true, category: "ihmiskunta" },
+            { label: "Neoliittinen vallankumous", year: "9500 v", log: 11.4, category: "kulttuuri" },
+            { label: "Antiikin Kreikka", year: "2500 v", log: 10.9, main: true, category: "kulttuuri" },
+            { label: "Moderni tiede", year: "400 v", log: 10.6, main: true, category: "teknologia" },
+            { label: "Internet", year: "32 v", log: 9.0, main: true, category: "teknologia" },
+            { label: "1 vuosi sitten", year: "1 v", log: 7.5, category: "ihmiskunta" }
+        ];
+
+        const margin = { top: 20, right: 100, bottom: 20, left: 130 };
+        const svg = d3.select("#timeline");
+        let containerHeight = document.getElementById('timeline-container').clientHeight;
+        let contentHeight = containerHeight - margin.top - margin.bottom;
+
+        const yBase = d3.scaleLog().domain([1e0, 1e20]).range([contentHeight, 0]);
+        let currentY = yBase;
+
+        const indicatorScale = d3.scaleLinear().domain([0, 20]).range([contentHeight, 0]);
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+        const axisG = g.append("g");
+        const decadeG = g.append("g").attr("class", "decades");
+        const hairlineGroup = g.append("g").attr("class", "hairlines");
+        const eventGroup = g.append("g").attr("class", "events");
+
+        const indicatorGroup = svg.append("g").attr("transform", `translate(20, ${margin.top})`);
+        indicatorGroup.append("rect").attr("x", 0).attr("width", 5).attr("y", 0).attr("height", contentHeight).attr("fill", "#eee");
+        indicatorGroup.selectAll("text")
+            .data(d3.range(0, 21, 2))
+            .enter().append("text")
+            .attr("x", 10).attr("y", d => indicatorScale(d))
+            .attr("dy", "0.35em").attr("font-size", "10px").text(d => d);
+
+        const zoomWindow = indicatorGroup.append("rect")
+            .attr("x", 0).attr("width", 5).attr("fill", "#888").attr("opacity", 0);
+
+        function updateAxis(scale) {
+            const yAxis = d3.axisLeft(scale).ticks(10, ".1e").tickSize(-10);
+            axisG.call(yAxis);
+            const decades = d3.range(0, 21);
+            const format = d3.format(".0f");
+            decadeG.selectAll("text")
+                .data(decades)
+                .join("text")
+                .attr("class", "decade-label")
+                .attr("x", -70)
+                .attr("y", d => scale(Math.pow(10, d)))
+                .attr("dy", "0.35em")
+                .text(d => `${format(d)}`);
+        }
+
+        function updateEvents(scale) {
+            const selectedCategories = new Set(Array.from(document.querySelectorAll('#filters input:checked')).map(i => i.value));
+            const visibleData = data.filter(d => selectedCategories.has(d.category));
+
+            hairlineGroup.selectAll("line")
+                .data(visibleData, d => d.label).join("line")
+                .attr("x1", 5).attr("x2", d => d.main ? 15 : 140)
+                .attr("y1", d => scale(Math.pow(10, d.log)))
+                .attr("y2", d => scale(Math.pow(10, d.log)))
+                .attr("stroke", "#ccc").attr("stroke-width", 1);
+
+            const events = eventGroup.selectAll("g")
+                .data(visibleData, d => d.label).join("g")
+                .attr("transform", d => `translate(0, ${scale(Math.pow(10, d.log))})`);
+
+            events.selectAll("rect").data(d => [d]).join("rect")
+                .attr("x", d => d.main ? 15 : 140).attr("y", -10).attr("width", 300).attr("height", 18)
+                .attr("fill", d => categoryColors[d.category] || "#e0e0e0");
+
+            events.selectAll("text").data(d => [d]).join("text")
+                .attr("class", "event-label").attr("x", d => d.main ? 20 : 145).attr("y", 0)
+                .text(d => `${d.label} (${d.year})`);
+        }
+
+        function updateIndicator(transform) {
+            const scale = transform.k;
+            const translateY = transform.y;
+            const indicatorHeight = contentHeight / scale;
+            const indicatorY = -translateY / scale;
+            zoomWindow
+                .attr("y", Math.max(0, Math.min(indicatorY, contentHeight - indicatorHeight)))
+                .attr("height", Math.min(contentHeight, indicatorHeight))
+                .attr("opacity", scale !== 1 ? 0.6 : 0);
+        }
+
+        updateAxis(yBase);
+        updateEvents(yBase);
+
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .translateExtent([[0, 0], [600, containerHeight]])
+            .on("zoom", ({ transform }) => {
+                let tempY = transform.rescaleY(yBase);
+                const domain = tempY.domain();
+                const clampedDomain = [
+                    Math.max(domain[0], 1e0),
+                    Math.min(domain[1], 1e20)
+                ];
+                currentY = d3.scaleLog().domain(clampedDomain).range([contentHeight, 0]);
+
+                updateAxis(currentY);
+                updateEvents(currentY);
+                updateIndicator(transform);
+            });
+
+        svg.call(zoomBehavior);
+
+        document.querySelectorAll('#filters input').forEach(i =>
+            i.addEventListener('change', () => updateEvents(currentY))
+        );
+
+        window.addEventListener('resize', () => {
+            containerHeight = document.getElementById('timeline-container').clientHeight;
+            contentHeight = containerHeight - margin.top - margin.bottom;
+            yBase.range([contentHeight, 0]);
+            indicatorScale.range([contentHeight, 0]);
+            indicatorGroup.select("rect").attr("height", contentHeight);
+            indicatorGroup.selectAll("text").attr("y", d => indicatorScale(d));
+            updateAxis(currentY);
+            updateEvents(currentY);
+            const t = d3.zoomTransform(svg.node());
+            updateIndicator(t);
+        });
+    </script>
+</body>
+
+</html>
