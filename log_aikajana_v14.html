@@ -16,6 +16,23 @@
             overflow: hidden;
         }
 
+        #page-title {
+            margin: 0.5em 1em;
+            font-size: 1.5em;
+            font-weight: normal;
+            color: #222;
+        }
+
+        #axis-label {
+            position: absolute;
+            top: 50px;
+            left: 40px;
+            // transform: rotate(-90deg);
+            transform-origin: left top;
+            font-size: 12px;
+            color: #333;
+        }
+
         svg {
             width: 100%;
             height: 100%;
@@ -54,7 +71,10 @@
 </head>
 
 <body>
+    <h1 id="page-title">Log history timeline v14</h1>
+    <div id="axis-label">time from present [s]</div>
     <svg id="timeline"></svg>
+
     <script>
         const svg = d3.select("#timeline");
         const width = window.innerWidth;
@@ -66,9 +86,9 @@
         let currentY = yBase;
 
         const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+        
         const axisG = g.append("g");
-        const hairlineLayer = g.append("g").attr("class", "hairlines");
-
+  
         svg.append("defs").append("filter")
             .attr("id", "shadow")
             .append("feDropShadow")
@@ -142,13 +162,15 @@
         }
 
         cards.forEach((d, i) => {
-            drawHairlines();
+          
             const yTop = currentY(Math.pow(10, d.logStart + d.logDuration));
             const yBottom = currentY(Math.pow(10, d.logStart));
             const height = yBottom - yTop;
+            const groupX = margin.left + 30 + i * xSpacing; 
 
             const g = svg.append("g")
-                .attr("class", "card-group inactive").datum(d)
+                .datum(d)  // aseta data ensin
+                .attr("class", d => "card-group " + (d.category === "ihmiskunta" ? "active" : "inactive"))                //.attr("class", d => `card-group ${d.category === "ihmiskunta" ? "active" : "inactive"}`)
                 .on("click", function () {
                     d3.selectAll(".card-group").classed("active", false).classed("inactive", true);
                     d3.select(this).classed("active", true).classed("inactive", false);
@@ -160,18 +182,31 @@
                 .attr("class", "card")
                 .attr("x", 0)
                 .attr("y", yTop)
-                .attr("width", width * 0.25)
+                .attr("width", width * 0.35)
                 .attr("height", height)
                 .attr("fill", categoryColors[d.category]);
 
             g.selectAll(".event")
                 .data(events.filter(e => e.category === d.category))
                 .enter()
+                // .append("line") // <- tähän kohtaan viivat jo alussa
                 .append("text")
                 .attr("class", "event-label")
                 .attr("x", 20)
                 .attr("y", e => currentY(Math.pow(10, e.log)))
                 .text(e => `${e.label} (${e.year})`);
+
+            g.selectAll(".event-line")
+                .data(events.filter(e => e.category === d.category))
+                .enter()
+                .append("line")
+                .attr("class", "event-line")
+                .attr("x1", margin.left - groupX + 10 ) // lähelle akselia
+                .attr("x2", 10)                // kortin vasempaan reunaan
+                .attr("y1", e => currentY(Math.pow(10, e.log)) - 5)
+                .attr("y2", e => currentY(Math.pow(10, e.log)) - 5)
+                .attr("stroke", "#666")
+                .attr("stroke-width", 1);
 
             g.append("text")
                 .attr("class", "card-label")
@@ -181,22 +216,6 @@
         });
 
         updateAxis(currentY);
-
-        
-        function drawHairlines() {
-            svg.selectAll(".hairline").remove();
-            events.forEach(d => {
-                svg.append("line")
-                    .attr("class", "hairline")
-                    .attr("x1", margin.left)
-                    .attr("x2", width)
-                    .attr("y1", currentY(Math.pow(10, d.log)) + margin.top)
-                    .attr("y2", currentY(Math.pow(10, d.log)) + margin.top)
-                    .attr("stroke", "#ccc")
-                    .attr("stroke-width", 1);
-            });
-        }
-
 
         const zoomBehavior = d3.zoom()
             .scaleExtent([0.1, 10])
@@ -226,13 +245,30 @@
 
                     g.select(".card-label").attr("y", yTop + 20);
 
+                    g.selectAll(".event-line")
+                    .attr("x1", function () {
+                            const group = d3.select(this.parentNode);
+                            const transform = group.attr("transform"); // esim. "translate(150, 20)"
+                            const x = parseFloat(transform.match(/translate\(([^,]+),/)[1]);
+                            return margin.left - x + 10; // viiva päättyy lähelle akselia
+                        })
+
+                        .attr("x2", 10)
+                        .attr("y1", e => currentY(Math.pow(10, e.log)) - 5)
+                        .attr("y2", e => currentY(Math.pow(10, e.log)) - 5)
+
                     g.selectAll(".event-label")
                         .attr("y", e => currentY(Math.pow(10, e.log)));
+
+                    g.selectAll(".event-line")
+                    .attr("y1", e => currentY(Math.pow(10, e.log)))
+                    .attr("y2", e => currentY(Math.pow(10, e.log)));
+
                 });
             });
 
         svg.call(zoomBehavior);
-        drawHairlines();
+
     </script>
 </body>
 
