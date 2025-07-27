@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tapahtumaeditori (JSON)</title>
+  <style>
+    body { font-family: sans-serif; margin: 1em; }
+    pre { background: #f0f0f0; padding: 1em; overflow-x: auto; }
+    table input { width: 100%; box-sizing: border-box; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #ccc; padding: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Tapahtumaeditori</h1>
+
+  <div style="margin-bottom:1em;">
+    <button onclick="addTheme()">+ Lisää uusi teema</button>
+    <input type="file" id="fileLoader" accept=".json" onchange="loadFromFile(event)">
+  </div>
+
+  <div id="output"></div>
+  <div style="margin-top: 1em;">
+    <button onclick="downloadJSON()">Tallenna JSON</button>
+  </div>
+  <div id="tableView"></div>
+
+<script>
+const parsedData = {
+  metadata: {
+    version: "1.3",
+    author: "Jukka Linjama",
+    updated: "2025-07-26"
+  },
+  events: [
+    {
+      theme: "kosmos",
+      events: [
+        {
+          label: "Alkuräjähdys",
+          year: "13.8 mrd v",
+          time_years: 1.38e10,
+          log: 17.64,
+          author: "JL",
+          ref: "https://fi.wikipedia.org/wiki/Alkuräjähdys",
+          comments: "Ajankohta arvioitu Planck-satelliitin datasta."
+        },
+        {
+          label: "Tähdet syttyvät",
+          year: "13.4 mrd v",
+          time_years: 1.34e10,
+          log: 17.61
+        }
+      ]
+    },
+    {
+      theme: "elämä",
+      events: [
+        {
+          label: "Elämän synty",
+          year: "3.8 mrd v",
+          time_years: 3.8e9,
+          log: 17.08,
+          author: "AT",
+          comments: "Ensimmäiset merkit stromatoliiteista"
+        }
+      ]
+    }
+  ]
+};
+
+window.currentParsed = parsedData;
+
+function renderEditableTable(groups) {
+  const container = document.getElementById("tableView");
+  let html = "<h2>Muokattava taulukko:</h2>";
+  html += "<table><thead><tr><th>Teema</th><th>Tapahtuma</th><th>Vuosi</th><th>time_years</th><th>log</th><th>author</th><th>ref</th><th>comments</th><th></th></tr></thead><tbody>";
+
+  groups.forEach((group, groupIndex) => {
+    group.events.forEach((ev, eventIndex) => {
+      html += `<tr>
+        <td><input value="${group.theme}" disabled></td>
+        <td><input value="${ev.label || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="label"></td>
+        <td><input value="${ev.year || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="year"></td>
+        <td><input type="number" step="1e6" value="${ev.time_years || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="time_years" placeholder="vuosina"></td>
+        <td><input style="background-color: #eee;" title="Lasketaan time_years-kentästä" value="${ev.log || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="log" readonly></td>
+        <td><input value="${ev.author || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="author"></td>
+        <td><input value="${ev.ref || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="ref"></td>
+        <td><input value="${ev.comments || ''}" data-group="${groupIndex}" data-index="${eventIndex}" data-field="comments"></td>
+        <td><button onclick="deleteEvent(${groupIndex}, ${eventIndex})">Poista</button></td>
+      </tr>`;
+    });
+
+    html += `<tr>
+      <td colspan="9"><button onclick="addEvent(${groupIndex})">+ Lisää tapahtuma teemaan '${group.theme}'</button> 
+      <button onclick="deleteTheme(${groupIndex})" style="float:right;color:red;">Poista teema</button></td>
+    </tr>`;
+  });
+
+  html += "</tbody></table>";
+  container.innerHTML = html;
+
+  container.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", () => {
+      const group = parseInt(input.dataset.group);
+      const index = parseInt(input.dataset.index);
+      const field = input.dataset.field;
+      const value = input.value;
+
+      if (!window.currentParsed.events[group].events[index]) return;
+
+      if (field === "time_years") {
+        const numeric = parseFloat(value);
+        window.currentParsed.events[group].events[index][field] = isNaN(numeric) ? "" : numeric;
+        if (!isNaN(numeric) && numeric > 0) {
+          const logSec = Math.log10(numeric * 365.25 * 24 * 3600);
+          window.currentParsed.events[group].events[index].log = Math.round(logSec * 100) / 100;
+        } else {
+          window.currentParsed.events[group].events[index].log = "";
+        }
+        renderEditableTable(window.currentParsed.events); // jotta log päivittyy myös näkymään
+      } else {
+        window.currentParsed.events[group].events[index][field] = value;
+      }
+
+      updateOutput();
+    });
+  });
+
+  updateOutput();
+}
+
+function updateOutput() {
+  document.getElementById("output").innerHTML = `
+    <h2>JSON-yhteenveto:</h2>
+    <pre>${JSON.stringify(window.currentParsed, null, 2)}</pre>
+  `;
+}
+
+function addTheme() {
+  const name = prompt("Uuden teeman nimi:");
+  if (!name) return;
+  if (!window.currentParsed.events) window.currentParsed.events = [];
+  window.currentParsed.events.push({ theme: name, events: [] });
+  renderEditableTable(window.currentParsed.events);
+}
+
+function deleteTheme(groupIndex) {
+  if (!confirm("Poistetaanko teema?")) return;
+  window.currentParsed.events.splice(groupIndex, 1);
+  renderEditableTable(window.currentParsed.events);
+}
+
+function addEvent(groupIndex) {
+  const group = window.currentParsed.events[groupIndex];
+  group.events.push({
+    label: "Uusi tapahtuma",
+    year: "",
+    time_years: "",
+    log: "",
+    author: "",
+    ref: "",
+    comments: ""
+  });
+  renderEditableTable(window.currentParsed.events);
+}
+
+function deleteEvent(groupIndex, eventIndex) {
+  window.currentParsed.events[groupIndex].events.splice(eventIndex, 1);
+  renderEditableTable(window.currentParsed.events);
+}
+
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(window.currentParsed, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "eventsDB.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const json = JSON.parse(e.target.result);
+      window.currentParsed = json;
+      renderEditableTable(json.events);
+    } catch (err) {
+      alert("Virhe ladatessa JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+renderEditableTable(window.currentParsed.events);
+</script>
+</body>
+</html>
