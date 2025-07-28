@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "version": "1.3",
+    "author": "Jukka Linjama",
+    "updated": "2025-07-26"
+  },
+  "events": [
+    {
+      "theme": "kosmos",
+      "events": [
+        {
+          "label": "Alkuräjähdys",
+          "year": "13.8 mrd v",
+          "time_years": 13800000000,
+          "log": 17.64,
+          "author": "JL",
+          "ref": "https://fi.wikipedia.org/wiki/Alkuräjähdys",
+          "comments": "Ajankohta arvioitu Planck-satelliitin datasta."
+        },
+        {
+          "label": "Tähdet syttyvät",
+          "year": "13.4 mrd v",
+          "time_years": 2020000000,
+          "log": 16.8
+        }
+      ]
+    },
+    {
+      "theme": "elämä",
+      "events": [
+        {
+          "label": "Elämän synty",
+          "year": "3.8 mrd v",
+          "time_years": 3800000000,
+          "log": 17.08,
+          "author": "AT",
+          "comments": "Ensimmäiset merkit stromatoliiteista"
+        },
+        {
+          "label": "Uusi tapahtuma",
+          "year": "ee",
+          "time_years": 6.7,
+          "log": 8.33,
+          "author": "",
+          "ref": "dd\nrr\nhh\n",
+          "comments": ""
+        }
+      ]
+    }
+  ]
+}
