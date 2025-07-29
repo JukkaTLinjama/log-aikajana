@@ -21,7 +21,7 @@
           "label": "Internet syntyy",
           "year": "3.20e+1",
           "time_years": 32,
-          "log": 9,
+          "log": 9.0,
           "author": "",
           "ref": "",
           "comments": ""
@@ -34,7 +34,7 @@
         {
           "label": "Ensimmäiset prokaryootit",
           "year": "3.70e+9",
-          "time_years": 3700000000,
+          "time_years": 3700000000.0,
           "log": 17.07,
           "author": "",
           "ref": "",
@@ -43,7 +43,7 @@
         {
           "label": "Eukaryootit",
           "year": "2.00e+9",
-          "time_years": 2000000000,
+          "time_years": 2000000000.0,
           "log": 16.8,
           "author": "",
           "ref": "",
@@ -52,7 +52,7 @@
         {
           "label": "Monisoluiset",
           "year": "1.00e+9",
-          "time_years": 1000000000,
+          "time_years": 1000000000.0,
           "log": 16.5,
           "author": "",
           "ref": "",
@@ -61,7 +61,7 @@
         {
           "label": "Kambrikauden räjähdys",
           "year": "5.00e+8",
-          "time_years": 500000000,
+          "time_years": 500000000.0,
           "log": 16.2,
           "author": "",
           "ref": "",
@@ -70,7 +70,7 @@
         {
           "label": "Nisäkkäiden nousu alkaa",
           "year": "6.50e+7",
-          "time_years": 65000000,
+          "time_years": 65000000.0,
           "log": 15.31,
           "author": "",
           "ref": "",
@@ -79,7 +79,7 @@
         {
           "label": "Kädelliset kehittyvät",
           "year": "5.50e+7",
-          "time_years": 55000000,
+          "time_years": 55000000.0,
           "log": 15.24,
           "author": "",
           "ref": "",
@@ -88,7 +88,7 @@
         {
           "label": "Varhaisimmat ihmisapinat",
           "year": "2.00e+7",
-          "time_years": 20000000,
+          "time_years": 20000000.0,
           "log": 14.8,
           "author": "",
           "ref": "",
@@ -97,7 +97,7 @@
         {
           "label": "Hominidien ja simpanssien sukulinjat eroavat",
           "year": "6.00e+6",
-          "time_years": 6000000,
+          "time_years": 6000000.0,
           "log": 14.28,
           "author": "",
           "ref": "",
@@ -106,7 +106,7 @@
         {
           "label": "Australopithecus kehittyy",
           "year": "4.00e+6",
-          "time_years": 4000000,
+          "time_years": 4000000.0,
           "log": 14.1,
           "author": "",
           "ref": "",
@@ -115,7 +115,7 @@
         {
           "label": "Varhaiset kivityökalut (Oldowan)",
           "year": "2.60e+6",
-          "time_years": 2600000,
+          "time_years": 2600000.0,
           "log": 13.91,
           "author": "",
           "ref": "",
@@ -124,7 +124,7 @@
         {
           "label": "Ensimmäiset symboliset merkit ja taide",
           "year": "1.00e+5",
-          "time_years": 100000,
+          "time_years": 100000.0,
           "log": 12.5,
           "author": "",
           "ref": "",
@@ -161,7 +161,7 @@
           "label": "Kirjoitettu historia",
           "year": "3.20e+3",
           "time_years": 3200,
-          "log": 11,
+          "log": 11.0,
           "author": "",
           "ref": "",
           "comments": ""
@@ -268,8 +268,8 @@
         {
           "label": "1 sekunti sitten",
           "year": "3.17e-8",
-          "time_years": 3.17e-8,
-          "log": 0,
+          "time_years": 3.17e-08,
+          "log": 0.0,
           "author": "",
           "ref": "",
           "comments": ""
@@ -282,7 +282,7 @@
         {
           "label": "Homo erectus käyttää tulta",
           "year": "1.50e+6",
-          "time_years": 1500000,
+          "time_years": 1500000.0,
           "log": 13.67,
           "author": "",
           "ref": "",
@@ -300,7 +300,7 @@
         {
           "label": "Homo sapiens ilmestyy",
           "year": "3.00e+5",
-          "time_years": 300000,
+          "time_years": 300000.0,
           "log": 12.98,
           "author": "",
           "ref": "",
@@ -323,7 +323,7 @@
         {
           "label": "Elämän synty",
           "year": "3.80e+9",
-          "time_years": 3800000000,
+          "time_years": 3800000000.0,
           "log": 17.08,
           "author": "",
           "ref": "",
@@ -332,7 +332,7 @@
         {
           "label": "Fotosynteesi",
           "year": "2.80e+9",
-          "time_years": 2800000000,
+          "time_years": 2800000000.0,
           "log": 16.95,
           "author": "",
           "ref": "",
@@ -341,7 +341,7 @@
         {
           "label": "Dinosaurukset kuolevat sukupuuttoon",
           "year": "6.60e+7",
-          "time_years": 66000000,
+          "time_years": 66000000.0,
           "log": 15.32,
           "author": "",
           "ref": "",
@@ -355,7 +355,7 @@
         {
           "label": "Alkuräjähdys",
           "year": "1.38e+10",
-          "time_years": 13800000000,
+          "time_years": 13800000000.0,
           "log": 17.64,
           "author": "",
           "ref": "",
@@ -364,7 +364,7 @@
         {
           "label": "Galaksien synty",
           "year": "1.36e+10",
-          "time_years": 13600000000,
+          "time_years": 13600000000.0,
           "log": 17.63,
           "author": "",
           "ref": "",
@@ -373,7 +373,7 @@
         {
           "label": "Aurinkokunta syntyy",
           "year": "4.60e+9",
-          "time_years": 4600000000,
+          "time_years": 4600000000.0,
           "log": 17.16,
           "author": "",
           "ref": "",
@@ -382,7 +382,7 @@
         {
           "label": "Maa muodostuu",
           "year": "4.54e+9",
-          "time_years": 4540000000,
+          "time_years": 4540000000.0,
           "log": 17.15,
           "author": "",
           "ref": "",

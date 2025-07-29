@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logaritminen Aikajana v19 </title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            background: #56565642;
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #page-title {
+            margin: 0.5em 1em;
+            font-size: 1.3em;
+            font-weight: normal;
+            color: #222;
+        }
+
+        #axis-label {
+            position: sticky;
+            top: 40px;
+            left: 30px;
+            padding-left: 10px;
+            font-size: 12px;
+            color: #333;
+            z-index: 10;
+        }
+
+        #timeline-container {
+            height: 90vh;
+            overflow: hidden;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .event-label {
+            font-size: 11px;
+            fill: #000;
+            pointer-events: none;
+        }
+
+        .card {
+            fill-opacity: 0.35;
+            stroke: #b4b2b221;
+            stroke-width: 1;
+            rx: 30;
+            ry: 10;
+            filter: url(#shadow);
+        }
+
+        .card-label {
+            font-size: 13px;
+            fill: #333;
+            font-weight: bold;
+        }
+
+        .inactive {
+            filter: blur(2px);
+        }
+
+        .active {
+            filter: none;
+        }
+
+        .card-group.active .card {
+            fill-opacity: 0.5;
+        }
+
+        .card-group.inactive .card {
+            fill-opacity: 0.35;
+        }
+
+        .event-line {
+            stroke: #666;
+            stroke-width: 1;
+        }
+
+        .card-group {
+            cursor: pointer;
+        }
+
+        .card-group:hover .card {
+            fill-opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="page-title">Log history timeline v19</h1>
+    <div id="status-message"></div>
+    <div id="axis-label">Time from present <br>log(sec) --  [sec]</div>
+    <div id="timeline-container">
+        <svg id="timeline"></svg>
+    </div>
+    <div id="status-message" style="color: #333; padding: 1em; font-size: 0.9em;"></div>
+
+    <script>
+        const svg = d3.select("#timeline");
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const margin = { top: 20, left: 90, right: 20, bottom: 20 };
+        const contentHeight = height - margin.top - margin.bottom;
+
+        const yBase = d3.scaleLog().domain([1e0, 1e20]).range([contentHeight, 0]);
+        let currentY = yBase;
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+        
+        const axisG = g.append("g");
+  
+        svg.append("defs").append("filter")
+            .attr("id", "shadow")
+            .append("feDropShadow")
+            .attr("dx", 4)
+            .attr("dy", 4)
+            .attr("stdDeviation", 4)
+            .attr("flood-color", "#000")
+            .attr("flood-opacity", 0.3);
+
+        const indicatorGroup = svg.append("g").attr("transform", `translate(20, ${margin.top})`);
+        const indicatorScale = d3.scaleLinear().domain([0, 20]).range([contentHeight, 0]);
+
+        indicatorGroup.append("rect") //taustapalkki
+            .attr("x", 0).attr("width", 20)
+            .attr("y", 0).attr("height", contentHeight)
+            .attr("fill", "#888");
+
+        indicatorGroup.selectAll("text")
+            .data(d3.range(0, 21, 2))
+            .enter().append("text")
+            .attr("x", 5).attr("y", d => indicatorScale(d))
+            .attr("dy", "0.35em")
+            .attr("font-size", "10px")
+            .text(d => d);
+
+        const zoomWindow = indicatorGroup.append("rect") // zoom-ikkuna
+            .attr("x", 0).attr("width", 20)
+            .attr("y", 0)
+            .attr("height", contentHeight)  // ← koko korkeus heti
+            .attr("fill", "#fff")
+            .attr("opacity", 0);
+
+    const themeColors = {
+        kosmos: "#a0c4ff",
+        elämä: "#b9fbc0",
+        ihmiskunta: "#ffc6ff",
+        kulttuuri: "#ffd6a5",
+        teknologia: "#fdffb6"
+    };
+
+        indicatorGroup.selectAll("text").raise(); // teksit ylös, jotta ne eivät peitä zoom-ikkunaa
+
+    let events = [];
+
+    fetch('eventsDB.json')
+        .then(response => {
+            if (!response.ok) throw new Error("Verkko- tai tiedostovirhe");
+            return response.json();
+        })
+        .then(data => {
+               // yhdistetään kaikki theme-kohtaiset eventit yhdeksi tasaiseksi taulukoksi
+            events = data.events.flatMap(group =>
+                group.events.map(e => ({ ...e, theme: group.theme }))
+            );
+            document.getElementById("status-message").textContent = "✅ Data loaded from eventsDB.json.";
+            renderTimeline();
+        })
+        .catch(error => {
+            console.error("JSON-lataus epäonnistui, käytetään fallback-dataa", error);
+            document.getElementById("status-message").textContent = "⚠️ eventsDB.json not found — using demo data.";
+
+            events = [  // fallback-data
+                { label: "Alkuräjähdys", year: "13.8e9", time_years: 13.8e9, log: 17.64, theme: "kosmos", ref: "", comments: "" },
+                { label: "Elämän synty", year: "3.8e9", time_years: 3.8e9, log: 17.08, theme: "elämä", ref: "", comments: "" },
+                { label: "Dinosaurukset kuolevat", year: "6.6e7", time_years: 6.6e7, log: 15.82, theme: "elämä", ref: "", comments: "" },
+                { label: "Homo sapiens", year: "3.0e5", time_years: 3.0e5, log: 12.98, theme: "ihmiskunta", ref: "", comments: "" },
+                { label: "Antiikin Kreikka", year: "2.5e3", time_years: 2.5e3, log: 10.9, theme: "kulttuuri", ref: "", comments: "" },
+                { label: "Moderni tiede", year: "4.0e2", time_years: 4.0e2, log: 10.6, theme: "teknologia", ref: "", comments: "" }
+            ];
+            renderTimeline();
+        });
+
+        const xSpacing = width * 0.05;
+    const cards = [
+        { theme: "kosmos", logStart: 14.6, logDuration: 5, xOffset: 0 },
+        { theme: "elämä", logStart: 13.6, logDuration: 5, xOffset: 80 },
+        { theme: "ihmiskunta", logStart: 1.8, logDuration: 13, xOffset: 160 },
+        { theme: "kulttuuri", logStart: 5.8, logDuration: 7, xOffset: 240 },
+        { theme: "teknologia", logStart: 2.8, logDuration: 9, xOffset: 320 }
+    ];
+
+        function updateAxis(scale) {
+            const yAxis = d3.axisLeft(scale).ticks(10, ".1e").tickSize(-10);
+            axisG.call(yAxis);
+        }
+
+        function updateIndicator(transform) {
+            const scale = transform.k;
+            const translateY = transform.y;
+            const indicatorHeight = contentHeight / scale;
+            const indicatorY = -translateY / scale;
+            zoomWindow
+                .attr("y", Math.max(0, Math.min(indicatorY, contentHeight - indicatorHeight)))
+                .attr("height", Math.min(contentHeight, indicatorHeight))
+                .attr("opacity", scale !== 1 ? 0.6 : 0);
+        }
+
+    function renderTimeline() {
+        cards.forEach((d, i) => {
+            const yTop = currentY(Math.pow(10, d.logStart + d.logDuration));
+            const yBottom = currentY(Math.pow(10, d.logStart));
+            const height = yBottom - yTop;
+            const groupX = margin.left + 30 + i * xSpacing;
+
+            const g = svg.append("g")
+                .datum(d)
+                .attr("class", d => "card-group " + (d.theme === "ihmiskunta" ? "active" : "inactive"))
+                .on("click", function () {
+                    d3.selectAll(".card-group").classed("active", false).classed("inactive", true);
+                    d3.select(this).classed("active", true).classed("inactive", false);
+                    this.parentNode.appendChild(this);
+                })
+                .attr("transform", `translate(${groupX}, ${margin.top})`);
+
+            g.append("rect")
+                .attr("class", "card")
+                .attr("x", 0)
+                .attr("y", yTop)
+                .attr("width", width * 0.35)
+                .attr("height", height)
+                .attr("fill", themeColors[d.theme]);
+
+            g.selectAll(".event")
+                .data(events.filter(e => e.theme === d.theme))
+                .enter()
+                .append("text")
+                .attr("class", "event-label")
+                .attr("x", 20)
+                .attr("y", e => currentY(Math.pow(10, e.log)))
+                .text(e => `${e.label} (${e.year})`);
+
+            g.selectAll(".event-line")
+                .data(events.filter(e => e.theme === d.theme))
+                .enter()
+                .append("line")
+                .attr("class", "event-line")
+                .attr("x1", margin.left - groupX + 10)
+                .attr("x2", 10)
+                .attr("y1", e => currentY(Math.pow(10, e.log)) - 5)
+                .attr("y2", e => currentY(Math.pow(10, e.log)) - 5)
+                .attr("stroke", "#666")
+                .attr("stroke-width", 1);
+
+            g.append("text")
+                .attr("class", "card-label")
+                .attr("x", 5)
+                .attr("y", yTop + 20)
+                .text(d.theme);
+        });
+
+        updateAxis(currentY);
+        svg.call(zoomBehavior).call(zoomBehavior.transform, d3.zoomIdentity);
+        updateIndicator({ k: 1, y: 0 });
+    }
+
+            const zoomBehavior = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .translateExtent([[0, 0], [width, height]])
+                .on("zoom", ({ transform }) => {
+                    let tempY = transform.rescaleY(yBase);
+                    const domain = tempY.domain();
+                    const clampedDomain = [
+                        Math.max(domain[0], 1e0),
+                        Math.min(domain[1], 1e20)
+                    ];
+                    currentY = d3.scaleLog().domain(clampedDomain).range([contentHeight, 0]);
+
+                    updateAxis(currentY);
+                    updateIndicator(transform);
+
+                    d3.selectAll(".card-group").each(function (d, i) {
+                        const g = d3.select(this);
+                        const card = d3.select(this).datum();
+                        const yTop = currentY(Math.pow(10, card.logStart + card.logDuration));
+                        const yBottom = currentY(Math.pow(10, card.logStart));
+                        const height = yBottom - yTop;
+
+                        g.select("rect")
+                            .attr("y", yTop)
+                            .attr("height", height);
+
+                        g.select(".card-label").attr("y", yTop + 20);
+
+                        g.selectAll(".event-line")
+                            .attr("x1", function () {
+                                const group = d3.select(this.parentNode);
+                                const transform = group.attr("transform");
+                                const x = parseFloat(transform.match(/translate\(([^,]+),/)[1]);
+                                return margin.left - x + 10;
+                            })
+                            .attr("x2", 10)
+                            .attr("y1", e => currentY(Math.pow(10, e.log)) - 5)
+                            .attr("y2", e => currentY(Math.pow(10, e.log)) - 5);
+
+                        g.selectAll(".event-label")
+                            .attr("y", e => currentY(Math.pow(10, e.log)));
+                    });
+                });
+
+    </script>
+</body>
+
+</html>
