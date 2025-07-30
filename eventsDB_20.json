@@ -6,93 +6,11 @@
   },
   "events": [
     {
-      "theme": "kosmos",
-      "events": [
-        {
-          "label": "Alkuräjähdys",
-          "year": "13.8 mrd v",
-          "time_years": 13800000000,
-          "log": 17.64,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Galaksien synty",
-          "year": "13.6 mrd v",
-          "time_years": 13600000000,
-          "log": 17.63,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Aurinkokunta syntyy",
-          "year": "4.6 mrd v",
-          "time_years": 4600000000,
-          "log": 17.16,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Maa muodostuu",
-          "year": "4.5 mrd v",
-          "time_years": 4540000000,
-          "log": 17.15,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        }
-      ]
-    },
-    {
-      "theme": "ihmiskunta",
-      "events": [
-        {
-          "label": "Homo erectus käyttää tulta",
-          "year": "1.5 milj. v",
-          "time_years": 1500000,
-          "log": 13.67,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Homo sapiens ilmestyy",
-          "year": "300 tuhatta v",
-          "time_years": 300000,
-          "log": 12.98,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Homo sapiens ilmestyy",
-          "year": "300 tuhatta v",
-          "time_years": 300000,
-          "log": 12.98,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Homo sapiens laajenee",
-          "year": "100 tuhatta v",
-          "time_years": 100000,
-          "log": 12.5,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        }
-      ]
-    },
-    {
       "theme": "teknologia",
       "events": [
         {
           "label": "Tietokoneet ja informaatioaika alkaa",
-          "year": "75 v",
+          "year": "7.50e+1",
           "time_years": 75,
           "log": 9.37,
           "author": "",
@@ -101,7 +19,7 @@
         },
         {
           "label": "Internet syntyy",
-          "year": "32 v",
+          "year": "3.20e+1",
           "time_years": 32,
           "log": 9,
           "author": "",
@@ -115,7 +33,7 @@
       "events": [
         {
           "label": "Ensimmäiset prokaryootit",
-          "year": "3.7 mrd v",
+          "year": "3.70e+9",
           "time_years": 3700000000,
           "log": 17.07,
           "author": "",
@@ -124,7 +42,7 @@
         },
         {
           "label": "Eukaryootit",
-          "year": "2.0 mrd v",
+          "year": "2.00e+9",
           "time_years": 2000000000,
           "log": 16.8,
           "author": "",
@@ -133,7 +51,7 @@
         },
         {
           "label": "Monisoluiset",
-          "year": "1.0 mrd v",
+          "year": "1.00e+9",
           "time_years": 1000000000,
           "log": 16.5,
           "author": "",
@@ -142,7 +60,7 @@
         },
         {
           "label": "Kambrikauden räjähdys",
-          "year": "500.0 milj. v",
+          "year": "5.00e+8",
           "time_years": 500000000,
           "log": 16.2,
           "author": "",
@@ -151,7 +69,7 @@
         },
         {
           "label": "Nisäkkäiden nousu alkaa",
-          "year": "65.0 milj. v",
+          "year": "6.50e+7",
           "time_years": 65000000,
           "log": 15.31,
           "author": "",
@@ -160,7 +78,7 @@
         },
         {
           "label": "Kädelliset kehittyvät",
-          "year": "55.0 milj. v",
+          "year": "5.50e+7",
           "time_years": 55000000,
           "log": 15.24,
           "author": "",
@@ -169,7 +87,7 @@
         },
         {
           "label": "Varhaisimmat ihmisapinat",
-          "year": "20.0 milj. v",
+          "year": "2.00e+7",
           "time_years": 20000000,
           "log": 14.8,
           "author": "",
@@ -178,7 +96,7 @@
         },
         {
           "label": "Hominidien ja simpanssien sukulinjat eroavat",
-          "year": "6.0 milj. v",
+          "year": "6.00e+6",
           "time_years": 6000000,
           "log": 14.28,
           "author": "",
@@ -187,7 +105,7 @@
         },
         {
           "label": "Australopithecus kehittyy",
-          "year": "4.0 milj. v",
+          "year": "4.00e+6",
           "time_years": 4000000,
           "log": 14.1,
           "author": "",
@@ -196,7 +114,7 @@
         },
         {
           "label": "Varhaiset kivityökalut (Oldowan)",
-          "year": "2.6 milj. v",
+          "year": "2.60e+6",
           "time_years": 2600000,
           "log": 13.91,
           "author": "",
@@ -205,7 +123,7 @@
         },
         {
           "label": "Ensimmäiset symboliset merkit ja taide",
-          "year": "100 tuhatta v",
+          "year": "1.00e+5",
           "time_years": 100000,
           "log": 12.5,
           "author": "",
@@ -214,7 +132,7 @@
         },
         {
           "label": "Neoliittinen vallankumous (maanviljely)",
-          "year": "10 tuhatta v",
+          "year": "9.50e+3",
           "time_years": 9500,
           "log": 11.48,
           "author": "",
@@ -223,7 +141,7 @@
         },
         {
           "label": "Ensimmäiset kaupungit",
-          "year": "6 tuhatta v",
+          "year": "6.30e+3",
           "time_years": 6300,
           "log": 11.3,
           "author": "",
@@ -232,7 +150,7 @@
         },
         {
           "label": "Egyptin pyramidit",
-          "year": "4 tuhatta v",
+          "year": "4.50e+3",
           "time_years": 4500,
           "log": 11.15,
           "author": "",
@@ -241,7 +159,7 @@
         },
         {
           "label": "Kirjoitettu historia",
-          "year": "3 tuhatta v",
+          "year": "3.20e+3",
           "time_years": 3200,
           "log": 11,
           "author": "",
@@ -250,7 +168,7 @@
         },
         {
           "label": "Antiikin Kreikka ja filosofia",
-          "year": "2 tuhatta v",
+          "year": "2.50e+3",
           "time_years": 2500,
           "log": 10.9,
           "author": "",
@@ -259,7 +177,7 @@
         },
         {
           "label": "Rooman valtakunnan huippu",
-          "year": "2 tuhatta v",
+          "year": "2.00e+3",
           "time_years": 2000,
           "log": 10.8,
           "author": "",
@@ -268,7 +186,7 @@
         },
         {
           "label": "Varhaiskeskiaika ja viikingit",
-          "year": "1 tuhatta v",
+          "year": "1.00e+3",
           "time_years": 1000,
           "log": 10.5,
           "author": "",
@@ -277,7 +195,7 @@
         },
         {
           "label": "Gutenbergin kirjapaino",
-          "year": "580 v",
+          "year": "5.80e+2",
           "time_years": 580,
           "log": 10.26,
           "author": "",
@@ -286,7 +204,7 @@
         },
         {
           "label": "Kolumbus löytää Amerikan",
-          "year": "530 v",
+          "year": "5.30e+2",
           "time_years": 530,
           "log": 10.23,
           "author": "",
@@ -295,7 +213,7 @@
         },
         {
           "label": "Teollinen vallankumous",
-          "year": "250 v",
+          "year": "2.50e+2",
           "time_years": 250,
           "log": 9.9,
           "author": "",
@@ -304,7 +222,7 @@
         },
         {
           "label": "Ensimmäinen maailmansota",
-          "year": "110 v",
+          "year": "1.10e+2",
           "time_years": 110,
           "log": 9.54,
           "author": "",
@@ -313,7 +231,7 @@
         },
         {
           "label": "Toinen maailmansota",
-          "year": "80 v",
+          "year": "8.00e+1",
           "time_years": 80,
           "log": 9.4,
           "author": "",
@@ -322,7 +240,7 @@
         },
         {
           "label": "Vuosi 2000",
-          "year": "24 v",
+          "year": "2.40e+1",
           "time_years": 24,
           "log": 8.88,
           "author": "",
@@ -331,7 +249,7 @@
         },
         {
           "label": "1 vuosi sitten",
-          "year": "1 v",
+          "year": "1.00e+0",
           "time_years": 1,
           "log": 7.5,
           "author": "",
@@ -340,7 +258,7 @@
         },
         {
           "label": "1 päivä sitten",
-          "year": "1 sekunti",
+          "year": "2.70e-3",
           "time_years": 0.0027,
           "log": 4.94,
           "author": "",
@@ -349,9 +267,50 @@
         },
         {
           "label": "1 sekunti sitten",
-          "year": "3.2e-08",
-          "time_years": 3.17e-08,
+          "year": "3.17e-8",
+          "time_years": 3.17e-8,
           "log": 0,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        }
+      ]
+    },
+    {
+      "theme": "ihmiskunta",
+      "events": [
+        {
+          "label": "Homo erectus käyttää tulta",
+          "year": "1.50e+6",
+          "time_years": 1500000,
+          "log": 13.67,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Homo sapiens ilmestyy",
+          "year": "3.00e+5",
+          "time_years": 300000,
+          "log": 12.98,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Homo sapiens ilmestyy",
+          "year": "3.00e+5",
+          "time_years": 300000,
+          "log": 12.98,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Homo sapiens laajenee",
+          "year": "1.00e+5",
+          "time_years": 100000,
+          "log": 12.5,
           "author": "",
           "ref": "",
           "comments": ""
@@ -363,7 +322,7 @@
       "events": [
         {
           "label": "Elämän synty",
-          "year": "3.8 mrd v",
+          "year": "3.80e+9",
           "time_years": 3800000000,
           "log": 17.08,
           "author": "",
@@ -372,7 +331,7 @@
         },
         {
           "label": "Fotosynteesi",
-          "year": "2.8 mrd v",
+          "year": "2.80e+9",
           "time_years": 2800000000,
           "log": 16.95,
           "author": "",
@@ -381,9 +340,50 @@
         },
         {
           "label": "Dinosaurukset kuolevat sukupuuttoon",
-          "year": "66.0 milj. v",
+          "year": "6.60e+7",
           "time_years": 66000000,
           "log": 15.32,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        }
+      ]
+    },
+    {
+      "theme": "kosmos",
+      "events": [
+        {
+          "label": "Alkuräjähdys",
+          "year": "1.38e+10",
+          "time_years": 13800000000,
+          "log": 17.64,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Galaksien synty",
+          "year": "1.36e+10",
+          "time_years": 13600000000,
+          "log": 17.63,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Aurinkokunta syntyy",
+          "year": "4.60e+9",
+          "time_years": 4600000000,
+          "log": 17.16,
+          "author": "",
+          "ref": "",
+          "comments": ""
+        },
+        {
+          "label": "Maa muodostuu",
+          "year": "4.54e+9",
+          "time_years": 4540000000,
+          "log": 17.15,
           "author": "",
           "ref": "",
           "comments": ""
