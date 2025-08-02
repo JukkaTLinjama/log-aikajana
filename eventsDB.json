@@ -68,15 +68,6 @@
           "comments": ""
         },
         {
-          "label": "Homo sapiens ilmestyy",
-          "year": "300 tuhatta v",
-          "time_years": 300000,
-          "log": 12.98,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
           "label": "Homo sapiens laajenee",
           "year": "100 tuhatta v",
           "time_years": 100000,
@@ -340,7 +331,7 @@
         },
         {
           "label": "1 päivä sitten",
-          "year": "1 sekunti",
+          "year": "1 vrk",
           "time_years": 0.0027,
           "log": 4.94,
           "author": "",
