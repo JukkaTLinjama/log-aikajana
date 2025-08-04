@@ -15,7 +15,7 @@
           "log": 17.64,
           "author": "",
           "ref": "",
-          "comments": "test comment"
+          "comments": "testii"
         },
         {
           "label": "Ensimmäiset tähdet",
@@ -71,8 +71,10 @@
           "ref": "",
           "comments": ""
         }
+
       ]
     },
+
     {
       "theme": "biologia",
       "events": [
@@ -94,6 +96,7 @@
           "ref": "",
           "comments": ""
         },
+
         {
           "label": "Ensimmäiset prokaryootit",
           "year": "3.7 mrd v",
@@ -121,6 +124,7 @@
           "ref": "",
           "comments": ""
         },
+
         {
           "label": "Kambrikauden räjähdys",
           "year": "500.0 milj. v",
@@ -254,9 +258,11 @@
         }
       ]
     },
+
     {
       "theme": "historia",
       "events": [
+
         {
           "label": "Ensimmäiset symboliset merkit ja taide",
           "year": "100 tuhatta v",
@@ -385,82 +391,83 @@
         }
       ]
     },
-    {
-      "theme": "moderni teknologia",
-      "events": [
+
         {
-          "label": "Tietokoneet ja informaatioaika alkaa",
-          "year": "75 v",
-          "time_years": 75,
-          "log": 9.37,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Internet syntyy",
-          "year": "32 v",
-          "time_years": 32,
-          "log": 9,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Älypuhelimet yleistyvät",
-          "year": "15 v",
-          "time_years": 15,
-          "log": 8.68,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Sosiaalinen media nousee",
-          "year": "10 v",
-          "time_years": 10,
-          "log": 8.5,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "Tekoälyn läpimurto",
-          "year": "5 v",
-          "time_years": 5,
-          "log": 8.2,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "1 vuosi sitten",
-          "year": "1 v",
-          "time_years": 1,
-          "log": 7.5,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "1 päivä sitten",
-          "year": "1 vrk",
-          "time_years": 0.0027,
-          "log": 4.94,
-          "author": "",
-          "ref": "",
-          "comments": ""
-        },
-        {
-          "label": "1 sekunti sitten",
-          "year": "3.2e-08",
-          "time_years": 3.17e-8,
-          "log": 0,
-          "author": "",
-          "ref": "",
-          "comments": ""
+          "theme": "moderni teknologia",
+          "events": [
+            {
+              "label": "Tietokoneet ja informaatioaika alkaa",
+              "year": "75 v",
+              "time_years": 75,
+              "log": 9.37,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "Internet syntyy",
+              "year": "32 v",
+              "time_years": 32,
+              "log": 9,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "Älypuhelimet yleistyvät",
+              "year": "15 v",
+              "time_years": 15,
+              "log": 8.18,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "Sosiaalinen media nousee",
+              "year": "10 v",
+              "time_years": 10,
+              "log": 7.78,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "Tekoälyn läpimurto",
+              "year": "5 v",
+              "time_years": 5,
+              "log": 7.2,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "1 vuosi sitten",
+              "year": "1 v",
+              "time_years": 1,
+              "log": 7.5,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "1 päivä sitten",
+              "year": "1 vrk",
+              "time_years": 0.0027,
+              "log": 4.94,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            },
+            {
+              "label": "1 sekunti sitten",
+              "year": "3.2e-08",
+              "time_years": 3.17e-08,
+              "log": 0,
+              "author": "",
+              "ref": "",
+              "comments": ""
+            }
+          ]
         }
-      ]
-    }
   ]
 }
