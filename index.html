@@ -100,7 +100,7 @@
 </head>
 
 <body>
-    <h1 id="page-title">Log history timeline v22-</h1>
+    <h1 id="page-title">Log history timeline v23 mobile</h1>
     <div id="status-message"></div>
     <div id="axis-label">Time from present <br>log(sec) --  [sec]</div>
     <div id="timeline-container">
@@ -220,7 +220,7 @@
 
             const fallbackThemes = [...new Set(events.map(e => e.theme))];
             const fallbackPalette = [
-                "#d0d0d0",  // 1. harmaa
+                //"#d0d0d0",  // 1. harmaa
                 "#b6c8d4",  // 2. harmaansininen
                // "#90b8cc",  // 3. sinertävä murrettu
                // "#70a8c6",  // 4. sininen pehmeä
@@ -254,7 +254,6 @@
         });
 
         const xSpacing = width * 0.05;
-
 
         function updateAxis(scale) {
             const yAxis = d3.axisLeft(scale).ticks(10, ".1e").tickSize(-10);
@@ -333,7 +332,8 @@
 
     // funkiton päällekkäisten tapahtumien haalistamiseen
     function applyOverlapFading() {
-        const threshold = 12;
+        const threshold = 12; // määrittää kuinka lähellä toisiaan olevat tapahtumat haalistetaan
+        let fadeTimer;  // Global in scope of applyOverlapFading
 
         // Kommenttilaatikko luodaan kerran
         let commentBox = d3.select("#comment-box");
@@ -390,35 +390,36 @@
             });
         });
 
-        // Long press ja hover kaikille event-label-elementeille
+        //  press ja hover kaikille event-label-elementeille
         d3.selectAll(".event-label").each(function (d) {
             let pressTimer;
 
             d3.select(this)
-                .on("mousedown touchstart", function (event) {
-                    pressTimer = setTimeout(() => {
-                        const [x, y] = d3.pointer(event, document.body);
-                        const msg = d.comments && d.comments.trim() !== "" ? d.comments : "no more data...";
-                        commentBox
-                            .html(`<b>${d.label}</b><br>${msg}`)
-                            .style("left", (x + 10) + "px")
-                            .style("top", (y + 10) + "px")
-                            .style("display", "block");
-                    }, 400);
-                })
-                .on("mouseup touchend", () => clearTimeout(pressTimer))
-                .on("mouseleave touchcancel", () => clearTimeout(pressTimer))
+
                 .on("mouseover", function (event) {
+                    clearTimeout(fadeTimer);                // peruutetaan aiempi aikakatkaisu
+                    commentBox.interrupt();                 // keskeytetään aiempi transition
+
                     const [x, y] = d3.pointer(event, document.body);
-                    // Näytä kommentti, jos sitä on
-                    if (commentBox.style("display") === "block") return; // Ei näytä uudestaan, jos jo näkyvissä
                     const msg = d.comments && d.comments.trim() !== "" ? d.comments.replace(/\n/g, "<br>") : "no more data...";
                     commentBox
                         .html(`<b>${d.label}</b><br>${msg}`)
                         .style("left", (x + 10) + "px")
                         .style("top", (y + 10) + "px")
+                        .style("opacity", 1)
                         .style("display", "block");
+
+                    fadeTimer = setTimeout(() => {
+                        commentBox
+                            .transition()
+                            .duration(800)
+                            .style("opacity", 0)
+                            .on("end", () => {
+                                commentBox.style("display", "none");
+                            });
+                    }, 1000);
                 })
+
                 .on("mouseout", function () {
                     commentBox.style("display", "none");
                 });
@@ -476,6 +477,7 @@
                             .attr("y", e => currentY(Math.pow(10, e.log)));
                     });
                     applyOverlapFading();
+                    setTimeout(applyOverlapFading, 100); // varmista blur ennen zoomausta
                 });
 
     </script>
