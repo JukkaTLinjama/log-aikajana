@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Logaritminen Aikajana v21 </title>
+    <title>Logaritminen Aikajana v24 </title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         html,
@@ -78,8 +78,8 @@
         }
         .card-group.active .card {
             fill-opacity: 0.3;
-            mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
-            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
+            mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.1));
+            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.1));
         }
 
         .card-group.inactive .card {
@@ -103,12 +103,11 @@
 
 <body>
     <h1 id="page-title">Log history timeline v24mobile</h1>
-    <div id="status-message"></div>
+    <div id="status-message" style="color: #987171; margin-left: 1em; font-size: 0.7em;"></div>
     <div id="axis-label">Time from present <br>log(sec) -- [sec]</div>
     <div id="timeline-container">
         <svg id="timeline"></svg>
     </div>
-    <div id="status-message" style="color: #987171; padding: 10em; font-size: 0.6em;"></div>
 
     <script>
         const svg = d3.select("#timeline");
@@ -454,9 +453,11 @@
                 d3.selectAll(".card-group").each(function (d, i) {
                     const g = d3.select(this);
                     const card = d3.select(this).datum();
-                    const yTop = currentY(Math.pow(10, card.logStart + card.logDuration));
+                    const yTopRaw = currentY(Math.pow(10, d.logStart + d.logDuration));
+                    const yTop = Math.max(0, yTopRaw);  // clampaa akselin yläreunaan
+
                     const yBottom = currentY(Math.pow(10, card.logStart));
-                    const height = yBottom - yTop;
+                    const height = Math.max(0, yBottom - yTop);
 
                     g.select("rect")
                         .attr("y", yTop)
