@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log Aikajana v28</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            background: #c2b7b742;
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #page-title {
+            margin: 0.5em 1em;
+            font-size: 1.3em;
+            font-weight: normal;
+            color: #222;
+        }
+        /* pieni info-ikoni */
+        #info-toggle{
+        position:absolute; top:10px; right:10px;
+        cursor:pointer; font-size:18px;
+        background:rgba(255,255,255,0.85);
+        width:24px; height:24px; text-align:center; line-height:22px;
+        box-shadow:0 1px 4px rgba(0,0,0,0.2);
+        z-index:1001;
+        }
+
+        /* kelluva laatikko (oletuksena piilossa) */
+        #info-box{
+        position:absolute; top:40px; right:10px; display:none;
+        max-width:240px; padding:8px 12px;
+        background:rgba(255,255,255,0.96);
+        border:1px solid #aaa; border-radius:8px;
+        font-size:12px; line-height:1.4;
+        box-shadow:0 2px 6px rgba(0,0,0,0.2);
+        z-index:1000;
+        }
+        #info-box div + div{ margin-top:6px; } /* väli status- ja ohjeen väliin */
+
+        #axis-label {
+            position: sticky;
+            top: 40px;
+            left: 30px;
+            padding-left: 10px;
+            font-size: 12px;
+            color: #333;
+            z-index: 10;
+        }
+
+        #timeline-container {
+            height: 90vh;
+            overflow: hidden;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* hienovaraisemmat väliviivat */
+        .minor-grid line{ stroke:#626262; stroke-opacity:0.75; shape-rendering:crispEdges; }
+
+        .event-label {
+            font-size: 11px;
+            fill: #000;
+            pointer-events: auto;
+        }
+
+        .card {
+            fill-opacity: 0.35;
+            stroke: #b4b2b221;
+            stroke-width: 1;
+            rx: 10;
+            ry: 10;
+            filter: url(#shadow);
+        }
+
+        .card-label {
+            font-size: 13px;
+            fill: #333;
+            font-weight: bold;
+        }
+
+        .inactive {
+            mask-image: linear-gradient(to right, rgba(0,0,0,0.5), rgba(0,0,0,0.0));
+            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0.5), rgba(0,0,0,0.0));
+        }
+
+        .active {
+            mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
+            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
+        }
+        .card-group.active .card {
+            fill-opacity: 0.3;
+            mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.1));
+            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.1));
+        }
+
+        .card-group.inactive .card {
+            fill-opacity: 0.35;
+        }
+
+        .event-line {
+            stroke: #aaa;
+            stroke-width: 1;
+        }
+
+        .card-group {
+            cursor: pointer;
+        }
+
+        .card-group:hover .card {
+            fill-opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="page-title">History timeline from present to Big Bang --v28</h1>
+    <!-- info-nappi ja laatikko oikeaan yläkulmaan -->
+    <div id="info-toggle" title="Ohjeet">ℹ</div>
+    <div id="info-box">
+        <div id="help-message">
+            Zoom: vertical pinch<br>
+            Vedä: vieritys suoraan tai Zoom bar<br>
+            Klikkaa korttia/tapahtumaa: aktivoi<br>
+            
+        </div>
+        <div id="status-message">Loading…</div>
+    </div>
+
+    <div id="axis-label">Time from present (bottom) to past (top)<br>Zoom range :: Time axis [sec]</div>
+    <div id="timeline-container">
+        <svg id="timeline"></svg>
+    </div>
+
+    <script>
+        const svg = d3.select("#timeline");
+        const container = document.getElementById("timeline-container"); // kommentti: mitat kontista
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+        const margin = { top: 20, left: 90, right: 20, bottom: 20 };
+        let contentWidth = width - margin.left - margin.right;  // kommentti: piirtoalueen leveys
+        let contentHeight = height - margin.top - margin.bottom; // kommentti: piirtoalueen korkeus 
+        const MIN_LIMIT = 1e7;        // valitse näytettävä  alue:
+        const MAX_LIMIT = 1e18;       // ← yläraja (voit pitää 1e20 jos haluat)
+        const INNER_PAD_BOTTOM = 10; // esim. 16 jos haluat pienen alareunapadin
+         const yBase = d3.scaleLog().domain([MIN_LIMIT, MAX_LIMIT]).range([contentHeight - INNER_PAD_BOTTOM, 0]);
+        let currentY = yBase;
+
+        const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+        const axisG = g.append("g");
+        const minorGridG = g.append("g").attr("class", "minor-grid"); // väliviivat
+        const cardsLayer = g.append("g").attr("clip-path", "url(#plotClip)"); // ← uusi
+
+        // ↓ DEFs: yhdistetään samaan lohkoon
+        const defs = svg.append("defs");
+
+        // varjofiltteri
+        defs.append("filter")
+            .attr("id", "shadow")
+            .append("feDropShadow")
+            .attr("dx", -4)
+            .attr("dy", 4)
+            .attr("stdDeviation", 4)
+            .attr("flood-color", "#000")
+            .attr("flood-opacity", 0.3);
+
+        // LEIKKAUSALUE: näkyvä piirtoalue (akselin alapuolelta canvasin alareunaan)
+        defs.append("clipPath").attr("id", "plotClip")
+            .append("rect")
+            .attr("x", 0)                                   // vasen reuna akselin kohdalla
+            .attr("y", 0)                                    // yläreuna otsikoiden alapuolella
+            .attr("width", contentWidth)   // ennen: width - margin.left - margin.right
+        const plotClip = defs.append("clipPath").attr("id", "plotClip")
+            .append("rect")
+            .attr("x", 0).attr("y", 0)
+            .attr("width", contentWidth)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM);
+        const indicatorGroup = svg.append("g").attr("transform", `translate(20, ${margin.top})`);
+        const indicatorScale = d3.scaleLinear()
+          .domain([Math.log10(MIN_LIMIT), Math.log10(MAX_LIMIT)])
+          .range([contentHeight - INNER_PAD_BOTTOM, 0]);
+        // TAUSTAPALKIN RECT
+        indicatorGroup.append("rect")
+            .attr("x", 0).attr("y", 0)           // kommentti: lisää y=0
+            .attr("width", 20)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM)
+            .attr("fill", "#d9d9d9");            // kommentti: vaalea harmaa
+
+        indicatorGroup.selectAll("text")
+            .data(d3.range(Math.ceil(Math.log10(MIN_LIMIT)), Math.floor(Math.log10(MAX_LIMIT)) + 1, 2))
+            .enter().append("text")
+            .attr("x", 5).attr("y", d => indicatorScale(d))
+            .attr("dy", "0.35em")
+            .attr("font-size", "10px")
+            .text(d => d);
+
+        // ZOOM-IKKUNA (aktiivinen alue)
+        const zoomWindow = indicatorGroup.append("rect")
+            .attr("class", "zoom-window")
+            .attr("x", 1).attr("y", 0)           // kommentti: pieni sisennys
+            .attr("width", 18)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM)
+            .attr("fill", "#ffffff")             // kommentti: valkoinen
+            .attr("opacity", 0.6);               // kommentti: updateIndicator säätää myöhemmin
+
+    // --- dekaditekstit joka 10^n (yläindeksillä) ---
+    const expsInit = d3.range(
+        Math.ceil(Math.log10(MIN_LIMIT)),
+        Math.floor(Math.log10(MAX_LIMIT)) + 1,
+        1
+    );
+
+    indicatorGroup.selectAll("text")
+        .data(expsInit)
+        .join("text")
+        .attr("x", 5)
+        .attr("y", d => indicatorScale(d))
+        .attr("dy", "0.35em")
+        .attr("font-size", "10px")
+        .each(function (d) {
+            const t = d3.select(this).text("");        // tyhjennä varmuudeksi
+            t.append("tspan").text("10");              // 10
+            t.append("tspan")                          // ^n yläindeksi
+                .attr("baseline-shift", "super")
+                .attr("font-size", "8px")
+                .text(d);
+        });
+
+    // --- dekadit joka 10^n myös resize-päivityksessä ---
+    const exps = d3.range(
+        Math.ceil(Math.log10(MIN_LIMIT)),
+        Math.floor(Math.log10(MAX_LIMIT)) + 1,
+        1
+    );
+
+    indicatorGroup.selectAll("text")
+        .data(exps)
+        .join(
+            enter => enter.append("text")
+                .attr("x", 5)
+                .attr("dy", "0.35em")
+                .attr("font-size", "10px")
+                .each(function (d) {
+                    const t = d3.select(this).text("");
+                    t.append("tspan").text("10");
+                    t.append("tspan")
+                        .attr("baseline-shift", "super")
+                        .attr("font-size", "8px")
+                        .text(d);
+                }),
+            update => update,          // pidä olemassa olevat tspansit
+            exit => exit.remove()
+        )
+        .attr("y", d => indicatorScale(d));
+
+    indicatorGroup.selectAll("text").raise();
+        // --- dekaditekstit loppu ---
+
+        // v28: viivat/kaaret jotka yhdistävät zoom-ikkunan akselin näkyvään alueeseen
+            const connectorsG = svg.append("g").attr("class", "zoom-connectors");
+            const connTop = connectorsG.append("path")
+                .attr("class", "zc-top").attr("fill", "none").attr("stroke", "#666").attr("stroke-width", 1).attr("stroke-dasharray", "3,3");
+            const connBot = connectorsG.append("path")
+                .attr("class", "zc-bot").attr("fill", "none").attr("stroke", "#666").attr("stroke-width", 1).attr("stroke-dasharray", "3,3");
+
+            // (valinnainen) käytetään kaaria suorien viivojen sijaan
+            const USE_EXP_CURVES = true; // kom: false = suorat viivat
+
+        let events = [];
+        let themeColors = {};
+        const customColorPalette = [
+           // "#d0d0d0",  // 1. harmaa
+            "#b6c8d4",  // 2. harmaansininen
+           // "#90b8cc",  // 3. sinertävä murrettu
+            "#70a8c6",  // 4. sininen pehmeä
+            //"#5797bf",  // 5. alkuperäinen sininen
+            "#4b9fa8",  // 6. sinivihreä
+            //"#3da58f",  // 7. vihreään taittuva
+            "#4dbc82",  // 8. murrettu kirkas vihreä
+            //"#5dcf8e",  // 9. vaalea kirkas vihreä
+            "#7be2a3"   // 10. vaalea mintunvihreä (loppuhuipennus)
+        ];
+        const colorScale = d3.scaleOrdinal(customColorPalette);
+
+        const ro = new ResizeObserver(entries => { // kontti on resiisattu
+                const r = entries[0].contentRect;
+                // 1) mitat uusiksi
+                width = r.width; height = r.height;
+                contentWidth = width - margin.left - margin.right;
+                contentHeight = height - margin.top - margin.bottom;
+
+                // 2) skaaloiden range uusiksi
+                yBase.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+                currentY.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+                indicatorScale.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+
+                // 3) clipin koko uusiksi
+                d3.select("#plotClip rect")
+                    .attr("width", contentWidth)
+                    .attr("height", contentHeight - INNER_PAD_BOTTOM);
+
+                // 4) indikaattoripalkki uusiksi
+                indicatorGroup.select("rect").attr("height", contentHeight - INNER_PAD_BOTTOM);
+                indicatorGroup.selectAll("text").attr("y", d => indicatorScale(d));
+
+                // 5) zoomin rajat + akseli + kaikki y:t uusiksi
+                const t = d3.zoomTransform(svg.node());
+                zoomBehavior.translateExtent([[0, 0], [width, height]]);
+                updateAxis(currentY);
+
+                d3.selectAll(".card-group").each(function () {
+                    const g = d3.select(this), card = g.datum();
+                    const yTopRaw = currentY(10 ** (card.logStart + card.logDuration));
+                    const yTop = Math.max(0, yTopRaw);
+                    const yBottom = currentY(10 ** card.logStart);
+                    const h = Math.max(0, yBottom - yTop);
+
+                    g.select("rect.card").attr("y", yTop).attr("height", h);
+
+                    const padTop = 16, padBottom = 18;
+                    const labelY = Math.min(yBottom - padBottom, Math.max(yTop + padTop, yTop + padTop));
+                    g.select(".card-label").attr("y", labelY - 3);
+                    g.select(".card-label-bg").attr("y", labelY - 15);
+
+                    g.selectAll(".event-line")
+                        .attr("y1", e => currentY(10 ** e.log) - 5)
+                        .attr("y2", e => currentY(10 ** e.log) - 5);
+                    g.selectAll(".event-label")
+                        .attr("y", e => currentY(10 ** e.log));
+                });
+
+                // 6) zoom-ikkuna nykyisellä transformilla
+                updateIndicator(t);
+            });
+            ro.observe(container);
+
+        fetch('eventsDB.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Verkko- tai tiedostovirhe");
+                return response.json();
+            })
+            .then(data => {
+                events = data.events.flatMap(group =>
+                    group.events.map(e => ({ ...e, theme: group.theme }))
+                );
+                themeColors = Object.fromEntries(
+                    Array.from(new Set(events.map(e => e.theme)))
+                        .map(theme => [theme, colorScale(theme)])
+                );
+
+                // Luo cards dynaamisesti tapahtumista
+                cards = Array.from(new Set(events.map(e => e.theme))).map((theme, i) => {
+                    const themeEvents = events.filter(e => e.theme === theme);
+                    const logValues = themeEvents.map(e => e.log);
+                    const minLog = Math.min(...logValues);
+                    const maxLog = Math.max(...logValues);
+                    return {
+                        theme,
+                        logStart: minLog - 0.4,
+                        logDuration: (maxLog - minLog) + 1.2,
+                    };
+                });
+
+                document.getElementById("status-message").textContent = "✅ Data loaded from eventsDB.json.";
+                renderTimeline();
+            })
+
+            .catch(error => {
+                console.error("JSON-lataus epäonnistui, käytetään fallback-dataa", error);
+                document.getElementById("status-message").textContent = "⚠️ eventsDB.json not found — using demo data.";
+
+                events = [  // fallback-data
+                    { label: "Alkuräjähdys", year: "13.8e9", time_years: 13.8e9, log: 17.64, theme: "kosmos", ref: "", comments: "testi\ncomment" },
+                    { label: "Elämän synty", year: "3.8e9", time_years: 3.8e9, log: 17.08, theme: "elämä", ref: "", comments: "" },
+                    { label: "Dinosaurukset kuolevat", year: "6.6e7", time_years: 6.6e7, log: 15.82, theme: "elämä", ref: "", comments: "" },
+                    { label: "Homo sapiens", year: "3.0e5", time_years: 3.0e5, log: 12.98, theme: "ihmiskunta", ref: "", comments: "" },
+                    { label: "Antiikin Kreikka", year: "2.5e3", time_years: 2.5e3, log: 10.9, theme: "kulttuuri", ref: "", comments: "" },
+                    { label: "Moderni tiede", year: "4.0e2", time_years: 4.0e2, log: 10.6, theme: "teknologia", ref: "", comments: "" }
+                ];
+
+                const fallbackThemes = [...new Set(events.map(e => e.theme))];
+                const fallbackPalette = [
+                    //"#d0d0d0",  // 1. harmaa
+                    "#b6c8d4",  // 2. harmaansininen
+                    // "#90b8cc",  // 3. sinertävä murrettu
+                    // "#70a8c6",  // 4. sininen pehmeä
+                    "#5797bf",  // 5. alkuperäinen sininen
+                    //"#4b9fa8",  // 6. sinivihreä
+                    "#3da58f",  // 7. vihreään taittuva
+                    "#4dbc82",  // 8. murrettu kirkas vihreä
+                    "#5dcf8e",  // 9. vaalea kirkas vihreä
+                    "#7be2a3"   // 10. vaalea mintunvihreä (loppuhuipennus)
+                ];
+                const colorScale = d3.scaleOrdinal(fallbackPalette);
+
+                themeColors = Object.fromEntries(
+                    Array.from(new Set(events.map(e => e.theme)))
+                        .map((theme, i) => [theme, colorScale(theme)])
+                );
+                cards = Array.from(new Set(events.map(e => e.theme))).map((theme, i) => {
+                    const themeEvents = events.filter(e => e.theme === theme);
+                    const logValues = themeEvents.map(e => e.log);
+                    const minLog = Math.min(...logValues);
+                    const maxLog = Math.max(...logValues);
+                    return {
+                        theme,
+                        logStart: minLog - 0.4, //kortin alareuna hieman ennen ensimmäistä tapahtumaa
+                        logDuration: (maxLog - minLog) + 1.2, //kortin korkeus hieman suurempi kuin tapahtuma-alue
+                        //xOffset: i * 80
+                    };
+                });
+
+                renderTimeline();
+            });
+
+        const xSpacing = width * 0.05;
+       
+        function updateAxis(scale) {
+            // 1) laske näkyvät dekadit
+            const [d0, d1] = scale.domain();                         // esim. [1e1, 1e18]
+            const n0 = Math.ceil(Math.log10(d0));                    // alin kokonais-eksponentti
+            const n1 = Math.floor(Math.log10(d1));                   // ylin kokonais-eksponentti
+            const decadeVals = d3.range(n0, n1 + 1).map(e => 10 ** e); // vain 10^n tikit
+
+            // 2) piirrä aksis ilman tekstiä (format tyhjä) ja omat labelit 10^n
+            const yAxis = d3.axisLeft(scale).tickValues(decadeVals).tickSize(-6).tickFormat(() => "");
+            axisG.call(yAxis);
+            // 10^n yläindeksillä: "10" + pieni superscript n
+            axisG.selectAll(".tick text").each(function (d) {
+                const n = Math.round(Math.log10(d));          // d on esim 1e12 -> n=12
+                const t = d3.select(this).text(null);         // tyhjennä vanha
+                t.append("tspan").text("10");
+                t.append("tspan")
+                    .attr("baseline-shift", "super")             // yläindeksi
+                    .attr("font-size", "9px")                    // pienempi fontti
+                    .text(n);
+            });
+
+            // 3) väliviivat (2..9 × 10^n) “aiemmin”
+            // kynnys: kun näkyviä dekadeja ≤ 12, näytä pienet viivat
+            minorGridG.selectAll("*").remove();
+            const visibleDecades = n1 - n0 + 1;
+            if (visibleDecades <= 12) {
+                // käy dekadit läpi ja lisää 2..9 -kertoimet
+                for (let e = n0; e <= n1; e++) {
+                    for (let m = 2; m <= 9; m++) {
+                        const v = m * 10 ** e;
+                        if (v >= d0 && v <= d1) {
+                            minorGridG.append("line")
+                                .attr("x1", 0).attr("x2", 5)        // lyhyt viiva akselin oik puolelle
+                                .attr("y1", scale(v)).attr("y2", scale(v));
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateIndicator(transform) {
+            const scale = transform.k;
+            const translateY = transform.y;
+            const maxH = (contentHeight - INNER_PAD_BOTTOM);
+            const indicatorHeight = maxH / scale;
+            const indicatorY = -translateY / scale;
+
+            zoomWindow
+                .attr("y", Math.max(0, Math.min(indicatorY, maxH - indicatorHeight)))
+                .attr("height", Math.min(maxH, indicatorHeight))
+                .attr("opacity", scale !== 1 ? 0.6 : 0);
+
+            const indY = Math.max(0, Math.min(indicatorY, maxH - indicatorHeight));
+            const indicatorGroupX = 20;
+            const rightX = indicatorGroupX + 20;
+            const topY_screen = margin.top + indY;
+            const botY_screen = margin.top + indY + indicatorHeight;
+
+            const [dMin, dMax] = currentY.domain();
+            const axisX = margin.left;
+            const axisTopY = margin.top + currentY(dMax);
+            const axisBotY = margin.top + currentY(dMin);
+
+            if (!USE_EXP_CURVES) {
+                // Suorat viivat
+                connTop.attr("d", `M${rightX},${topY_screen} L${axisX},${axisTopY}`);
+                connBot.attr("d", `M${rightX},${botY_screen} L${axisX},${axisBotY}`);
+            } else {
+                // Eksponenttikäyrät
+                const a = 2.0; // jyrkkyys
+                const expInterp = t => (Math.exp(a * t) - 1) / (Math.exp(a) - 1);
+                const N = 28;
+                const xs = d3.range(0, N + 1).map(i => rightX + (axisX - rightX) * (i / N));
+
+                // Yläviiva
+                const topPts = xs.map((x, i) => {
+                    const t = i / N;
+                    const y = topY_screen + (axisTopY - topY_screen) * expInterp(t);
+                    return [x, y];
+                });
+
+                // Alaviiva
+                const botPts = xs.map((x, i) => {
+                    const t = i / N;
+                    // ennen: 1 - expInterp(t)  → käännettiin väärin
+                    // nyt: expInterp(t) oikein mutta käytetään lähtö=botY_screen
+                    const y = botY_screen + (axisBotY - botY_screen) * expInterp(t);
+                    return [x, y];
+                });
+
+                const lineGen = d3.line();
+                connTop.attr("d", lineGen(topPts));
+                connBot.attr("d", lineGen(botPts));
+            }
+
+            const op = (scale === 1 ? 0 : 1);
+            connTop.attr("stroke-opacity", op);
+            connBot.attr("stroke-opacity", op);
+        }
+
+        // --- v28: zoomWindow toimii scrollbarina ---
+            function applyTransform(t) {
+                svg.call(zoomBehavior.transform, t); // apufunktio
+            }
+
+            zoomWindow.call(
+                d3.drag().on("drag", (event) => {
+                    const t = d3.zoomTransform(svg.node());
+                    const k = t.k;
+                    const maxH = contentHeight - INNER_PAD_BOTTOM;
+                    const indicatorH = maxH / k;
+
+                    let newY = Math.max(0, Math.min(
+                        (+zoomWindow.attr("y") || 0) + event.dy,
+                        maxH - indicatorH
+                    ));
+
+                    const newTranslateY = -newY * k;
+                    applyTransform(d3.zoomIdentity.translate(0, newTranslateY).scale(k));
+                })
+            );
+
+        // INFO-LAATIKON TOGGLE + KLIKKAUS ULOS = SULJE
+            const infoToggle = document.getElementById("info-toggle");
+            const infoBox = document.getElementById("info-box");
+
+            // auki/kiinni
+            infoToggle.addEventListener("click", (e) => {
+                e.stopPropagation(); // ettei body-click sulje heti
+                const open = infoBox.style.display === "block";
+                infoBox.style.display = open ? "none" : "block";
+            });
+
+            // sulje kun klikataan muualla
+            document.body.addEventListener("click", () => {
+                if (infoBox.style.display === "block") infoBox.style.display = "none";
+            });
+
+            // estä laatikon sisäklikkauksesta sulkeutuminen
+            infoBox.addEventListener("click", (e) => e.stopPropagation());
+
+        function renderTimeline() {
+            cards.forEach((d, i) => {
+                const yTop = currentY(Math.pow(10, d.logStart + d.logDuration));
+                const yBottom = currentY(Math.pow(10, d.logStart));
+                const height = yBottom - yTop;
+                const indent = (i % 2 === 1 ? 20 : 0); // kom: 40px sisennys vain parillisille korteille
+                const groupX = 20 + indent;
+
+                const cardWidth = Math.min(width * 0.35, contentWidth - groupX - 10); // turvaraja
+
+                const labelX = 5;
+                const labelY = yTop + 10;
+
+                const cardG = cardsLayer.append("g")
+                    .datum(d)
+                    .attr("class", d => "card-group " + (d.theme === "ihmiskunta" ? "active" : "inactive"))
+                    .on("click", function () {
+                        d3.selectAll(".card-group").classed("active", false).classed("inactive", true);
+                        d3.select(this).classed("active", true).classed("inactive", false);
+                        this.parentNode.appendChild(this);
+                    })
+                    .attr("transform", `translate(${groupX}, 0)`)
+
+                // Card rectangle
+                cardG.append("rect")
+                    .attr("class", "card")
+                    .attr("x", 0)
+                    .attr("y", yTop)
+                    .attr("width", cardWidth)
+                    .attr("height", height)
+                    .attr("fill", themeColors[d.theme]);
+
+                // Event texts
+                cardG.selectAll(".event")
+                    .data(events.filter(e => e.theme === d.theme))
+                    .enter()
+                    .append("text")
+                    .attr("class", "event-label")
+                    .attr("x", 20)
+                    .attr("y", e => currentY(Math.pow(10, e.log)))
+                    .text(e => `${e.label} (${e.year})`);
+
+                // Event lines
+                cardG.selectAll(".event-line")
+                    .data(events.filter(e => e.theme === d.theme))
+                    .enter().append("line")
+                    .attr("class", "event-line")
+                    .attr("x1", function () {
+                        const x = parseFloat(d3.select(this.parentNode).attr("transform").match(/translate\(([^,]+),/)[1]);
+                        return -x + 10;
+                    })
+                    .attr("x2", 10)
+                    .attr("y1", e => currentY(10 ** e.log) - 5)
+                    .attr("y2", e => currentY(10 ** e.log) - 5);
+
+                // Label background
+                cardG.append("rect")
+                    .attr("class", "card-label-bg")
+                    .attr("x", labelX - 4)
+                    .attr("y", labelY - 12)
+                    .attr("rx", 4)
+                    .attr("ry", 4)
+                    .attr("width", 140)
+                    .attr("height", 17)
+                    .style("fill", "white")
+                    .style("opacity", 0.6);
+
+                // Label text
+                cardG.append("text")
+                    .attr("class", "card-label")
+                    .attr("x", labelX)
+                    .attr("y", labelY)
+                    .text(d.theme)
+                    .style("font-weight", "bold");
+            });
+
+            updateAxis(currentY);
+            svg.call(zoomBehavior).call(zoomBehavior.transform, d3.zoomIdentity);
+            updateIndicator({ k: 1, y: 0 });
+            applyOverlapFading();
+
+            // --- v28: automaattinen zoom-vihje ---
+            setTimeout(() => {
+                const humanCard = d3.selectAll(".card-group").filter(d => d.theme === "ihmiskunta");
+                if (!humanCard.empty()) {
+                    const d = humanCard.datum();
+                    const yTop = currentY(10 ** (d.logStart + d.logDuration));
+                    const yBottom = currentY(10 ** d.logStart);
+                    const cardMid = (yTop + yBottom) / 2;
+
+                    const k = 3;  // zoom-taso, säädä tarpeen mukaan
+                    const newY = -cardMid * k + contentHeight / 2;
+                    const t = d3.zoomIdentity.translate(0, newY).scale(k);
+
+                    svg.transition()
+                        .duration(1000)
+                        .ease(d3.easeCubicOut)
+                        .call(zoomBehavior.transform, t);
+                }
+            }, 1500); // 1.5 sek viive
+        }
+
+        // funkiton päällekkäisten tapahtumien haalistamiseen
+        function applyOverlapFading() {
+            const threshold = 12; // määrittää kuinka lähellä toisiaan olevat tapahtumat haalistetaan
+            let fadeTimer;  // Global in scope of applyOverlapFading
+
+            // Kommenttilaatikko luodaan kerran
+            let commentBox = d3.select("#comment-box");
+            if (commentBox.empty()) {
+                commentBox = d3.select("body")
+                    .append("div")
+                    .attr("id", "comment-box")
+                    .style("position", "absolute")
+                    .style("background", "#fff")
+                    .style("padding", "6px 10px")
+                    .style("border", "1px solid #999")
+                    .style("border-radius", "6px")
+                    .style("box-shadow", "0px 2px 4px rgba(0,0,0,0.2)")
+                    .style("font-size", "12px")
+                    .style("max-width", "220px")
+                    .style("pointer-events", "auto")       // ← tämä lisäys tärkeä
+                    .style("z-index", "9999")
+                    .style("display", "none");
+
+            }
+
+            // Haalistus ryhmittäin
+            d3.selectAll(".card-group").each(function () {
+                const allEvents = [];
+
+                d3.select(this).selectAll(".event-label").each(function (d) {
+                    const y = Math.round(parseFloat(d3.select(this).attr("y")));
+                    allEvents.push({ element: this, y: y, data: d });
+                });
+
+                allEvents.sort((a, b) => a.y - b.y);
+
+                let groups = [];
+                let currentGroup = [];
+
+                for (let i = 0; i < allEvents.length; i++) {
+                    const e = allEvents[i];
+                    if (
+                        currentGroup.length === 0 ||
+                        Math.abs(e.y - currentGroup[currentGroup.length - 1].y) < threshold
+                    ) {
+                        currentGroup.push(e);
+                    } else {
+                        groups.push(currentGroup);
+                        currentGroup = [e];
+                    }
+                }
+                if (currentGroup.length) groups.push(currentGroup);
+
+                groups.forEach(group => {
+                    group.forEach((e, i) => {
+                        d3.select(e.element).style("fill-opacity", i === 0 ? 1 : 0.3);
+                    });
+                });
+            });
+
+            //  press ja hover kaikille event-label-elementeille
+            d3.selectAll(".event-label").each(function (d) {
+                let pressTimer;
+
+                d3.select(this)
+
+                    .on("mouseover", function (event) {
+                        clearTimeout(fadeTimer);                // peruutetaan aiempi aikakatkaisu
+                        commentBox.interrupt();                 // keskeytetään aiempi transition
+
+                        const [x, y] = d3.pointer(event, document.body);
+                        const msg = d.comments && d.comments.trim() !== "" ? d.comments.replace(/\n/g, "<br>") : "no more data...";
+                        commentBox
+                            .html(`<b>${d.label}</b><br>${msg}`)
+                            .style("left", (x + 10) + "px")
+                            .style("top", (y + 10) + "px")
+                            .style("opacity", 1)
+                            .style("display", "block");
+
+                        fadeTimer = setTimeout(() => {
+                            commentBox
+                                .transition()
+                                .duration(800)
+                                .style("opacity", 0)
+                                .on("end", () => {
+                                    commentBox.style("display", "none");
+                                });
+                        }, 1000);
+                    })
+
+                    .on("mouseout", function () {
+                        commentBox.style("display", "none");
+                    });
+            });
+
+            // Piilota kommentti taustaklikistä
+            d3.select("body").on("click", function (event) {
+                if (!event.target.classList.contains("event-label")) {
+                    d3.select("#comment-box").style("display", "none");
+                }
+            });
+        }
+
+    // zoom käyttäytyminen
+    const zoomBehavior = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .translateExtent([[0, 0], [width, height]])
+        .on("zoom", ({ transform }) => {
+            // 1) skaala ja indikaattori
+            let tempY = transform.rescaleY(yBase);
+            const domain = tempY.domain();
+            const clampedDomain = [
+                Math.max(domain[0], MIN_LIMIT),
+                Math.min(domain[1], MAX_LIMIT)
+            ];
+            currentY = d3.scaleLog().domain(clampedDomain).range([contentHeight - INNER_PAD_BOTTOM, 0]);
+            updateAxis(currentY);
+            updateIndicator(transform);
+
+            // 2) päivitä kaikki kortit + tekstit
+            d3.selectAll(".card-group").each(function () {
+                const g = d3.select(this);
+                const card = g.datum();
+
+                // kortin ylä- ja alareuna
+                const yTopRaw = currentY(Math.pow(10, card.logStart + card.logDuration));
+                const yTop = Math.max(0, yTopRaw);     // clampaa akselin yläreunaan
+                const yBottom = currentY(Math.pow(10, card.logStart));
+                const height = Math.max(0, yBottom - yTop);
+
+                // kortin rect
+                g.select("rect")
+                    .attr("y", yTop)
+                    .attr("height", height);
+
+                // --- UUTTA: otsikon clampaaminen kortin sisään ---
+                const padTop = 16;    // pieni marginaali yläreunasta
+                const padBottom = 18; // ettei osu alareunaan
+                // clamp: vähintään yTop+padTop ja korkeintaan yBottom-padBottom
+                const labelY = Math.min(yBottom - padBottom, Math.max(yTop + padTop, yTop + padTop));
+                g.select(".card-label").attr("y", labelY-3);
+                g.select(".card-label-bg").attr("y", labelY - 15);  // sama offset kuin yllä
+
+                // tapahtumaviivat
+                g.selectAll(".event-line")
+                    .attr("x1", function () {
+                        const group = d3.select(this.parentNode);
+                        const transform = group.attr("transform");
+                        const x = parseFloat(transform.match(/translate\(([^,]+),/)[1]);
+                        return -x + 10;  // korttiryhmän paikalliseen koordinaattiin
+                    })
+                    .attr("x2", 10)
+                    .attr("y1", e => currentY(Math.pow(10, e.log)) - 5)
+                    .attr("y2", e => currentY(Math.pow(10, e.log)) - 5);
+
+                // event-tekstit
+                g.selectAll(".event-label")
+                    .attr("y", e => currentY(Math.pow(10, e.log)));
+            });
+
+            // haalistus päälle
+            applyOverlapFading();
+            setTimeout(applyOverlapFading, 100); // varmistus zoomin jälkeen
+        });
+
+    </script>
+</body>
+
+</html>
