@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Logaritminen Aikajana v26 </title>
+    <title>Logaritminen Aikajana v27 </title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         html,
@@ -126,36 +126,37 @@
 </head>
 
 <body>
-    <h1 id="page-title">Logarithmic history timeline v26</h1>
+    <h1 id="page-title">Logarithmic history timeline v27</h1>
     <!-- info-nappi ja laatikko oikeaan yläkulmaan -->
     <div id="info-toggle" title="Ohjeet">ℹ️</div>
     <div id="info-box">
-        <div id="status-message">Loading…</div>
         <div id="help-message">
             Zoom: rulla / pinch<br>
             Vedä: vieritys<br>
             Klikkaa korttia/tapahtumaa: aktivoi<br>
             Pitkä painallus: kommentit
         </div>
+        <div id="status-message">Loading…</div>
     </div>
 
-    <div id="axis-label">Time from present <br>log(sec) --- [sec]</div>
+    <div id="axis-label">Time from present [sec] <br>Zoom range :: Time</div>
     <div id="timeline-container">
         <svg id="timeline"></svg>
     </div>
 
     <script>
         const svg = d3.select("#timeline");
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        const margin = { top: 20, left: 90, right: 20, bottom: 60 };
-        const contentWidth = width - margin.left - margin.right; // piirtoalueen leveys
-        const contentHeight = height - margin.top - margin.bottom;
-         // valitse näytettävä  alue:
-        const MIN_LIMIT = 1e6;   // ← vaihda tähän SEC_DAY jos haluat rajata päivään asti
+        const container = document.getElementById("timeline-container"); // kommentti: mitat kontista
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+        const margin = { top: 20, left: 90, right: 20, bottom: 20 };
+        //const contentWidth = width - margin.left - margin.right; // piirtoalueen leveys
+        let contentWidth = width - margin.left - margin.right;  // kommentti: piirtoalueen leveys
+        let contentHeight = height - margin.top - margin.bottom; // kommentti: piirtoalueen korkeus 
+        const MIN_LIMIT = 1e7;        // valitse näytettävä  alue:
         const MAX_LIMIT = 1e18;       // ← yläraja (voit pitää 1e20 jos haluat)
-
-        const yBase = d3.scaleLog().domain([MIN_LIMIT, MAX_LIMIT]).range([contentHeight, 0]);
+        const INNER_PAD_BOTTOM = 10; // esim. 16 jos haluat pienen alareunapadin
+         const yBase = d3.scaleLog().domain([MIN_LIMIT, MAX_LIMIT]).range([contentHeight - INNER_PAD_BOTTOM, 0]);
         let currentY = yBase;
 
         const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
@@ -182,33 +183,91 @@
             .attr("x", 0)                                   // vasen reuna akselin kohdalla
             .attr("y", 0)                                    // yläreuna otsikoiden alapuolella
             .attr("width", contentWidth)   // ennen: width - margin.left - margin.right
-            .attr("height", contentHeight);                           // koko piirtokorkeus
-
+        const plotClip = defs.append("clipPath").attr("id", "plotClip")
+            .append("rect")
+            .attr("x", 0).attr("y", 0)
+            .attr("width", contentWidth)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM);
         const indicatorGroup = svg.append("g").attr("transform", `translate(20, ${margin.top})`);
         const indicatorScale = d3.scaleLinear()
-            .domain([Math.log10(MIN_LIMIT), Math.log10(MAX_LIMIT)])
-            .range([contentHeight, 0]);
-        indicatorGroup.append("rect") //taustapalkki
-            .attr("x", 0).attr("width", 20)
-            .attr("y", 0).attr("height", contentHeight)
-            .attr("fill", "#888");
+          .domain([Math.log10(MIN_LIMIT), Math.log10(MAX_LIMIT)])
+          .range([contentHeight - INNER_PAD_BOTTOM, 0]);
+        // TAUSTAPALKIN RECT
+        indicatorGroup.append("rect")
+            .attr("x", 0).attr("y", 0)           // kommentti: lisää y=0
+            .attr("width", 20)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM)
+            .attr("fill", "#d9d9d9");            // kommentti: vaalea harmaa
 
         indicatorGroup.selectAll("text")
-            .data(d3.range(0, 21, 2))
+            .data(d3.range(Math.ceil(Math.log10(MIN_LIMIT)), Math.floor(Math.log10(MAX_LIMIT)) + 1, 2))
             .enter().append("text")
             .attr("x", 5).attr("y", d => indicatorScale(d))
             .attr("dy", "0.35em")
             .attr("font-size", "10px")
             .text(d => d);
 
-        const zoomWindow = indicatorGroup.append("rect") // zoom-ikkuna
-            .attr("x", 0).attr("width", 20)
-            .attr("y", 0)
-            .attr("height", contentHeight)  // ← koko korkeus heti
-            .attr("fill", "#fff")
-            .attr("opacity", 0);
+        // ZOOM-IKKUNA (aktiivinen alue)
+        const zoomWindow = indicatorGroup.append("rect")
+            .attr("class", "zoom-window")
+            .attr("x", 1).attr("y", 0)           // kommentti: pieni sisennys
+            .attr("width", 18)
+            .attr("height", contentHeight - INNER_PAD_BOTTOM)
+            .attr("fill", "#ffffff")             // kommentti: valkoinen
+            .attr("opacity", 0.6);               // kommentti: updateIndicator säätää myöhemmin
 
-        indicatorGroup.selectAll("text").raise(); // teksit ylös, jotta ne eivät peitä zoom-ikkunaa
+    // --- dekaditekstit joka 10^n (yläindeksillä) ---
+    const expsInit = d3.range(
+        Math.ceil(Math.log10(MIN_LIMIT)),
+        Math.floor(Math.log10(MAX_LIMIT)) + 1,
+        1
+    );
+
+    indicatorGroup.selectAll("text")
+        .data(expsInit)
+        .join("text")
+        .attr("x", 5)
+        .attr("y", d => indicatorScale(d))
+        .attr("dy", "0.35em")
+        .attr("font-size", "10px")
+        .each(function (d) {
+            const t = d3.select(this).text("");        // tyhjennä varmuudeksi
+            t.append("tspan").text("10");              // 10
+            t.append("tspan")                          // ^n yläindeksi
+                .attr("baseline-shift", "super")
+                .attr("font-size", "8px")
+                .text(d);
+        });
+
+    // --- dekadit joka 10^n myös resize-päivityksessä ---
+    const exps = d3.range(
+        Math.ceil(Math.log10(MIN_LIMIT)),
+        Math.floor(Math.log10(MAX_LIMIT)) + 1,
+        1
+    );
+
+    indicatorGroup.selectAll("text")
+        .data(exps)
+        .join(
+            enter => enter.append("text")
+                .attr("x", 5)
+                .attr("dy", "0.35em")
+                .attr("font-size", "10px")
+                .each(function (d) {
+                    const t = d3.select(this).text("");
+                    t.append("tspan").text("10");
+                    t.append("tspan")
+                        .attr("baseline-shift", "super")
+                        .attr("font-size", "8px")
+                        .text(d);
+                }),
+            update => update,          // pidä olemassa olevat tspansit
+            exit => exit.remove()
+        )
+        .attr("y", d => indicatorScale(d));
+
+    indicatorGroup.selectAll("text").raise();
+        // --- dekaditekstit loppu ---
 
         let events = [];
         let themeColors = {};
@@ -225,6 +284,58 @@
             "#7be2a3"   // 10. vaalea mintunvihreä (loppuhuipennus)
         ];
         const colorScale = d3.scaleOrdinal(customColorPalette);
+
+        const ro = new ResizeObserver(entries => { // kontti on resiisattu
+                const r = entries[0].contentRect;
+                // 1) mitat uusiksi
+                width = r.width; height = r.height;
+                contentWidth = width - margin.left - margin.right;
+                contentHeight = height - margin.top - margin.bottom;
+
+                // 2) skaaloiden range uusiksi
+                yBase.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+                currentY.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+                indicatorScale.range([contentHeight - INNER_PAD_BOTTOM, 0]);
+
+                // 3) clipin koko uusiksi
+                d3.select("#plotClip rect")
+                    .attr("width", contentWidth)
+                    .attr("height", contentHeight - INNER_PAD_BOTTOM);
+
+                // 4) indikaattoripalkki uusiksi
+                indicatorGroup.select("rect").attr("height", contentHeight - INNER_PAD_BOTTOM);
+                indicatorGroup.selectAll("text").attr("y", d => indicatorScale(d));
+
+                // 5) zoomin rajat + akseli + kaikki y:t uusiksi
+                const t = d3.zoomTransform(svg.node());
+                zoomBehavior.translateExtent([[0, 0], [width, height]]);
+                updateAxis(currentY);
+
+                d3.selectAll(".card-group").each(function () {
+                    const g = d3.select(this), card = g.datum();
+                    const yTopRaw = currentY(10 ** (card.logStart + card.logDuration));
+                    const yTop = Math.max(0, yTopRaw);
+                    const yBottom = currentY(10 ** card.logStart);
+                    const h = Math.max(0, yBottom - yTop);
+
+                    g.select("rect.card").attr("y", yTop).attr("height", h);
+
+                    const padTop = 16, padBottom = 18;
+                    const labelY = Math.min(yBottom - padBottom, Math.max(yTop + padTop, yTop + padTop));
+                    g.select(".card-label").attr("y", labelY - 3);
+                    g.select(".card-label-bg").attr("y", labelY - 15);
+
+                    g.selectAll(".event-line")
+                        .attr("y1", e => currentY(10 ** e.log) - 5)
+                        .attr("y2", e => currentY(10 ** e.log) - 5);
+                    g.selectAll(".event-label")
+                        .attr("y", e => currentY(10 ** e.log));
+                });
+
+                // 6) zoom-ikkuna nykyisellä transformilla
+                updateIndicator(t);
+            });
+            ro.observe(container);
 
         fetch('eventsDB.json')
             .then(response => {
@@ -318,7 +429,6 @@
             // 2) piirrä aksis ilman tekstiä (format tyhjä) ja omat labelit 10^n
             const yAxis = d3.axisLeft(scale).tickValues(decadeVals).tickSize(-6).tickFormat(() => "");
             axisG.call(yAxis);
-
             // 10^n yläindeksillä: "10" + pieni superscript n
             axisG.selectAll(".tick text").each(function (d) {
                 const n = Math.round(Math.log10(d));          // d on esim 1e12 -> n=12
@@ -352,12 +462,12 @@
         function updateIndicator(transform) {
             const scale = transform.k;
             const translateY = transform.y;
-            const indicatorHeight = contentHeight / scale;
+            const indicatorHeight = (contentHeight - INNER_PAD_BOTTOM) / scale;
             const indicatorY = -translateY / scale;
             zoomWindow
-                .attr("y", Math.max(0, Math.min(indicatorY, contentHeight - indicatorHeight)))
-                .attr("height", Math.min(contentHeight, indicatorHeight))
-                .attr("opacity", scale !== 1 ? 0.6 : 0);
+            .attr("y", Math.max(0, Math.min(indicatorY, (contentHeight - INNER_PAD_BOTTOM) - indicatorHeight)))
+            .attr("height", Math.min(contentHeight - INNER_PAD_BOTTOM, indicatorHeight))
+            .attr("opacity", scale !== 1 ? 0.6 : 0);
         }
         // INFO-LAATIKON TOGGLE + KLIKKAUS ULOS = SULJE
             const infoToggle = document.getElementById("info-toggle");
@@ -573,8 +683,7 @@
                 Math.max(domain[0], MIN_LIMIT),
                 Math.min(domain[1], MAX_LIMIT)
             ];
-            currentY = d3.scaleLog().domain(clampedDomain).range([contentHeight, 0]);
-
+            currentY = d3.scaleLog().domain(clampedDomain).range([contentHeight - INNER_PAD_BOTTOM, 0]);
             updateAxis(currentY);
             updateIndicator(transform);
 
