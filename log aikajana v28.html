@@ -126,15 +126,18 @@
 </head>
 
 <body>
-    <h1 id="page-title">History timeline from present to Big Bang --v28</h1>
+    <h1 id="page-title">History timeline 13.8 billion years to present --v28</h1>
     <!-- info-nappi ja laatikko oikeaan yläkulmaan -->
     <div id="info-toggle" title="Ohjeet">ℹ</div>
     <div id="info-box">
         <div id="help-message">
+            Logarithmic timeline of major events from the Big Bang to present. Arranged to partly overlapping historical themes.<br><br>
             Zoom: vertical pinch<br>
-            Vedä: vieritys suoraan tai Zoom bar<br>
-            Klikkaa korttia/tapahtumaa: aktivoi<br>
-            
+            Scroll: scroll content or Zoom bar<br>
+            Select theme: click card<br>
+            Show event data: click event<br>
+            Happy exploring!<br><br>
+            https://github.com/JukkaTLinjama/log-aikajana
         </div>
         <div id="status-message">Loading…</div>
     </div>
@@ -677,6 +680,32 @@
 
             // Kommenttilaatikko luodaan kerran
             let commentBox = d3.select("#comment-box");
+            // --- v28 ADD: älykäs tooltip-sijoittelu (mobiili+desktop)
+            const TPAD = 10; // reuna-padding
+            function placeCommentBox(px, py, preferRight = true) {
+                // kom: mittaa laatikko → pakko näyttää hetkeksi
+                commentBox.style("display", "block").style("opacity", 1);
+                const bw = commentBox.node().offsetWidth || 180;
+                const bh = commentBox.node().offsetHeight || 80;
+                const vw = window.innerWidth, vh = window.innerHeight;
+
+                // oletus: oikealle & hieman alas kohdistuksesta
+                let x = px + 14, y = py + 12;
+
+                // flip oikealta vasemmalle jos vuotaa
+                if (preferRight && x + bw + TPAD > vw) x = px - 14 - bw;
+
+                // clamp vaakasuunnassa
+                if (x < TPAD) x = TPAD;
+                if (x + bw > vw - TPAD) x = vw - TPAD - bw;
+
+                // jos alareuna vuotaa, nosta ylös
+                if (y + bh + TPAD > vh) y = py - 12 - bh;
+                if (y < TPAD) y = TPAD;
+
+                commentBox.style("left", x + "px").style("top", y + "px");
+            }
+
             if (commentBox.empty()) {
                 commentBox = d3.select("body")
                     .append("div")
@@ -692,7 +721,6 @@
                     .style("pointer-events", "auto")       // ← tämä lisäys tärkeä
                     .style("z-index", "9999")
                     .style("display", "none");
-
             }
 
             // Haalistus ryhmittäin
@@ -736,31 +764,47 @@
 
                 d3.select(this)
 
-                    .on("mouseover", function (event) {
-                        clearTimeout(fadeTimer);                // peruutetaan aiempi aikakatkaisu
-                        commentBox.interrupt();                 // keskeytetään aiempi transition
+                    // korvaa: mouseover → pointerenter/touchstart
+                    .on("pointerenter touchstart", function (event) {
+                        clearTimeout(fadeTimer);
+                        commentBox.interrupt();
 
-                        const [x, y] = d3.pointer(event, document.body);
-                        const msg = d.comments && d.comments.trim() !== "" ? d.comments.replace(/\n/g, "<br>") : "no more data...";
-                        commentBox
-                            .html(`<b>${d.label}</b><br>${msg}`)
-                            .style("left", (x + 10) + "px")
-                            .style("top", (y + 10) + "px")
-                            .style("opacity", 1)
-                            .style("display", "block");
+                          // v28: tooltip: rivi 1 = otsikko, rivi 2 = aika (suluissa), rivi 3 = kommentti
+                        const [px, py] = d3.pointer(event, document.body);
 
+                        // kom: hae aika tekstinä (sama mikä korteissa suluissa)
+                        const yearTxt = (d.year && String(d.year).trim() !== "") ? d.year : "—";
+
+                        // kom: kommentti, rivinvaihdot sallittu
+                        const msg = d.comments && d.comments.trim() !== ""
+                            ? d.comments.replace(/\n/g, "<br>")
+                            : "no more data...";
+
+                        // kom: 1) otsikko, 2) aika suluissa, 3) kommentti
+                        commentBox.html(
+                            `<div><b>${d.label}</b></div>
+                            <div style="color:#555;">(${yearTxt})</div>
+                            <div>${msg}</div>`
+                        );
+
+                        const preferRight = window.innerWidth > 520; // kom: kapealla usein vasen parempi
+                        placeCommentBox(px, py, preferRight);
+
+                        // auto-hide
                         fadeTimer = setTimeout(() => {
-                            commentBox
-                                .transition()
-                                .duration(800)
-                                .style("opacity", 0)
-                                .on("end", () => {
-                                    commentBox.style("display", "none");
-                                });
-                        }, 1000);
+                            commentBox.transition().duration(1800).style("opacity", 0)
+                                .on("end", () => commentBox.style("display", "none"));
+                        }, 1200);
                     })
 
-                    .on("mouseout", function () {
+                    // uusi: seuraa sormea/hiirtä
+                    .on("pointermove touchmove", function (event) {
+                        const [px, py] = d3.pointer(event, document.body);
+                        placeCommentBox(px, py, window.innerWidth > 520);
+                    })
+
+                    // korvaa: mouseout → pointerleave/touchend/touchcancel
+                    .on("pointerleave touchend touchcancel", function () {
                         commentBox.style("display", "none");
                     });
             });
