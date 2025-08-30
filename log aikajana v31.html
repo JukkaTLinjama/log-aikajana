@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Log Aikajana v31</title>
+    <title>Log Aikajana v31b</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         html,
@@ -152,7 +152,7 @@
 <body>
 <h1 id="page-title">
     History at your fingertips — Big Bang to 2025
-    <span style="font-size:0.5em; color:#666;">v31</span>
+    <span style="font-size:0.5em; color:#666;">v31b</span>
 </h1>
     <!-- info-nappi ja laatikko oikeaan yläkulmaan -->
     <div id="info-toggle" title="Ohjeet">?</div>
@@ -298,6 +298,56 @@
             .attr("height", contentHeight - INNER_PAD_BOTTOM)
             .attr("fill", "#ffffff")             // kommentti: valkoinen
             .attr("opacity", 0.6);               // kommentti: updateIndicator säätää myöhemmin
+        
+            // v31: hitbox-parametrit (laajempi tartunta-alue)
+        const HIT_PAD_LEFT = 14;     // pieni padi vasemmalle
+        const HIT_PAD_RIGHT = 14;     // pieni padi oikealle
+        const HIT_EXTRA_RIGHT_SCALE = 1.0; // +100% = duplaa barin leveyden oikealle
+        const HIT_PAD_Y = 12;  // pystysuunta: +12px ylös/alas
+        const HIT_SCALE = 1.2; // v31: 1.0 = sama korkeus kuin indikaattori, 1.2 = 120%
+
+        // v31: leveä, osittain näkyvä "hitbox" zoom-barin ympärille
+        const zoomHit = indicatorGroup.append("rect")
+            .attr("class", "zoom-hit")
+            .attr("x", (+zoomWindow.attr("x") - HIT_PAD_LEFT)) // siirry hieman vasemmalle            .attr("y", 0)
+            .attr("width", ((+zoomWindow.attr("width")) * (1 + HIT_EXTRA_RIGHT_SCALE))
+                + HIT_PAD_LEFT + HIT_PAD_RIGHT)     // +100% oikealle + pienet padit            .attr("height", contentHeight - INNER_PAD_BOTTOM) // alkuarvo; päivittyy updateIndicatorissa
+            .attr("fill", "#ff8c00") // oranssi huomioväri (DarkOrange). Vaihtoehto: "#ffa500" (Orange)            .attr("rx", 8).attr("ry", 8) // pyöristetyt kulmat (SVG rect)
+            .attr("opacity", 0)      // oletuksena piilossa
+            .attr("rx", 8).attr("ry", 8) // pyöristetyt kulmat (SVG rect)
+            .style("pointer-events", "all")
+            .call(
+                d3.drag()
+                    .on("drag", (event) => {
+                        const t = d3.zoomTransform(svg.node());
+                        const k = t.k;
+                        const maxH = contentHeight - INNER_PAD_BOTTOM;
+                        const indicatorH = maxH / k;
+
+                        let newY = Math.max(0, Math.min(
+                            (+zoomWindow.attr("y") || 0) + event.dy,
+                            maxH - indicatorH
+                        ));
+
+                        const newTranslateY = -newY * k;
+                        applyTransform(d3.zoomIdentity.translate(0, newTranslateY).scale(k));
+                    })
+                    .on("end", () => showHitboxHint()) // vihje dragin lopuksi
+            );
+
+        zoomHit.raise(); // varmistetaan osuma-alue päällimmäiseksi
+
+        // v31: pieni vihje-efekti (vilautus & feidaus)
+        function showHitboxHint() {
+            zoomHit.interrupt()
+                .attr("opacity", 0)
+                .transition().delay(200).duration(150)
+                .attr("opacity", 0.12)                 // hento näkyvyys
+                .transition().delay(900).duration(600)
+                .attr("opacity", 0);
+        }
+        // myös yleinen kosketus/klikkaus laukoo vihjeen
+        svg.on("pointerup.zoomhint", () => showHitboxHint());
 
     // --- dekaditekstit joka 10^n (yläindeksillä) ---
     const expsInit = d3.range(
@@ -439,8 +489,9 @@
             })
             .then(data => {
                 events = data.events.flatMap(group =>
-                    group.events.map(e => ({ ...e, theme: group.theme }))
+                    group.events.map(e => ({ ...e, theme: (group.theme || "").trim() })) // v31: trim → ei "ihmiskunta " vs "ihmiskunta"
                 );
+
                 themeColors = Object.fromEntries(
                     Array.from(new Set(events.map(e => e.theme)))
                         .map(theme => [theme, colorScale(theme)])
@@ -554,64 +605,76 @@
         }
 
         function updateIndicator(transform) {
-            const scale = transform.k;
-            const translateY = transform.y;
-            const maxH = (contentHeight - INNER_PAD_BOTTOM);
-            const indicatorHeight = maxH / scale;
-            const indicatorY = -translateY / scale;
+                const scale = transform.k;
+                const translateY = transform.y;
+                const maxH = (contentHeight - INNER_PAD_BOTTOM);
+                const indicatorHeight = maxH / scale;
+                const indicatorY = -translateY / scale;
 
-            zoomWindow
-                .attr("y", Math.max(0, Math.min(indicatorY, maxH - indicatorHeight)))
-                .attr("height", Math.min(maxH, indicatorHeight))
-                .attr("opacity", scale !== 1 ? 0.6 : 0);
+                // v31 FIX: laske indY ENNEN käyttöä (aiemmin virheellinen järjestys)
+                const indY = Math.max(0, Math.min(indicatorY, maxH - indicatorHeight));
 
-            const indY = Math.max(0, Math.min(indicatorY, maxH - indicatorHeight));
-            const indicatorGroupX = 20;
-            const rightX = indicatorGroupX + 20;
-            const topY_screen = margin.top + indY;
-            const botY_screen = margin.top + indY + indicatorHeight;
+                // itse ikkuna
+                zoomWindow
+                    .attr("y", indY)
+                    .attr("height", Math.min(maxH, indicatorHeight))
+                    .attr("opacity", scale !== 1 ? 0.6 : 0);
 
-            const [dMin, dMax] = currentY.domain();
-            const axisX = margin.left;
-            const axisTopY = margin.top + currentY(dMax);
-            const axisBotY = margin.top + currentY(dMin);
+                // HITBOX: 100–120% indikaattorin korkeudesta, keskitetään indikaattoriin
+                const hitH = Math.min(maxH, indicatorHeight * HIT_SCALE);
+                let hitY = indY - (hitH - indicatorHeight) / 2;  // keskitys
+                hitY = Math.max(0, Math.min(hitY, maxH - hitH)); // clamp
 
-            if (!USE_EXP_CURVES) {
-                // Suorat viivat
-                connTop.attr("d", `M${rightX},${topY_screen} L${axisX},${axisTopY}`);
-                connBot.attr("d", `M${rightX},${botY_screen} L${axisX},${axisBotY}`);
-            } else {
-                // Eksponenttikäyrät
-                const a = 2.0; // jyrkkyys
-                const expInterp = t => (Math.exp(a * t) - 1) / (Math.exp(a) - 1);
-                const N = 28;
-                const xs = d3.range(0, N + 1).map(i => rightX + (axisX - rightX) * (i / N));
+               const winX = (+zoomWindow.attr("x") || 1);
+                const winW = (+zoomWindow.attr("width") || 18);
+                const hitX = winX - HIT_PAD_LEFT;
+                const hitW = winW * (1 + HIT_EXTRA_RIGHT_SCALE) + HIT_PAD_LEFT + HIT_PAD_RIGHT;
 
-                // Yläviiva
-                const topPts = xs.map((x, i) => {
-                    const t = i / N;
-                    const y = topY_screen + (axisTopY - topY_screen) * expInterp(t);
-                    return [x, y];
-                });
+                zoomHit
+                    .attr("x", hitX)
+                    .attr("y", hitY)
+                    .attr("width", hitW)
+                    .attr("height", hitH);
 
-                // Alaviiva
-                const botPts = xs.map((x, i) => {
-                    const t = i / N;
-                    // ennen: 1 - expInterp(t)  → käännettiin väärin
-                    // nyt: expInterp(t) oikein mutta käytetään lähtö=botY_screen
-                    const y = botY_screen + (axisBotY - botY_screen) * expInterp(t);
-                    return [x, y];
-                });
+                // --- zoom-indikaattorin liittimet (katkoviivat) ---
+                const indicatorGroupX = 20;
+                const rightX = indicatorGroupX + 20;
+                const topY_screen = margin.top + indY;
+                const botY_screen = margin.top + indY + indicatorHeight;
 
-                const lineGen = d3.line();
-                connTop.attr("d", lineGen(topPts));
-                connBot.attr("d", lineGen(botPts));
+                const [dMin, dMax] = currentY.domain();
+                const axisX = margin.left;
+                const axisTopY = margin.top + currentY(dMax);
+                const axisBotY = margin.top + currentY(dMin);
+
+                if (!USE_EXP_CURVES) {
+                    connTop.attr("d", `M${rightX},${topY_screen} L${axisX},${axisTopY}`);
+                    connBot.attr("d", `M${rightX},${botY_screen} L${axisX},${axisBotY}`);
+                } else {
+                    const a = 2.0, N = 28;
+                    const expInterp = t => (Math.exp(a * t) - 1) / (Math.exp(a) - 1);
+                    const xs = d3.range(0, N + 1).map(i => rightX + (axisX - rightX) * (i / N));
+
+                    const topPts = xs.map((x, i) => {
+                        const t = i / N;
+                        const y = topY_screen + (axisTopY - topY_screen) * expInterp(t);
+                        return [x, y];
+                    });
+                    const botPts = xs.map((x, i) => {
+                        const t = i / N;
+                        const y = botY_screen + (axisBotY - botY_screen) * expInterp(t);
+                        return [x, y];
+                    });
+                    const lineGen = d3.line();
+                    connTop.attr("d", lineGen(topPts));
+                    connBot.attr("d", lineGen(botPts));
+                }
+
+                const op = (scale === 1 ? 0 : 1);
+                connTop.attr("stroke-opacity", op);
+                connBot.attr("stroke-opacity", op);
             }
 
-            const op = (scale === 1 ? 0 : 1);
-            connTop.attr("stroke-opacity", op);
-            connBot.attr("stroke-opacity", op);
-        }
         // zoom käyttäytyminen
         const zoomBehavior = d3.zoom()
             .scaleExtent([0.1, 10])
@@ -684,21 +747,25 @@
             }
 
             zoomWindow.call(
-                d3.drag().on("drag", (event) => {
-                    const t = d3.zoomTransform(svg.node());
-                    const k = t.k;
-                    const maxH = contentHeight - INNER_PAD_BOTTOM;
-                    const indicatorH = maxH / k;
+                d3.drag()
+                    .on("drag", (event) => {
+                        // sama logiikka kuin ennen
+                        const t = d3.zoomTransform(svg.node());
+                        const k = t.k;
+                        const maxH = contentHeight - INNER_PAD_BOTTOM;
+                        const indicatorH = maxH / k;
 
-                    let newY = Math.max(0, Math.min(
-                        (+zoomWindow.attr("y") || 0) + event.dy,
-                        maxH - indicatorH
-                    ));
+                        let newY = Math.max(0, Math.min(
+                            (+zoomWindow.attr("y") || 0) + event.dy,
+                            maxH - indicatorH
+                        ));
 
-                    const newTranslateY = -newY * k;
-                    applyTransform(d3.zoomIdentity.translate(0, newTranslateY).scale(k));
-                })
-            );
+                        const newTranslateY = -newY * k;
+                        applyTransform(d3.zoomIdentity.translate(0, newTranslateY).scale(k));
+                    })
+                    .on("end", () => showHitboxHint()) // kommentti: vilauta hitbox-vihje dragin päätteeksi
+                );
+
 
         // INFO-LAATIKON TOGGLE + KLIKKAUS ULOS = SULJE
             const infoToggle = document.getElementById("info-toggle");
